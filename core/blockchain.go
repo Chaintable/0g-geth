@@ -2446,9 +2446,11 @@ func (bc *BlockChain) InsertBlockWithoutSetHead(block *types.Block, makeWitness 
 	}
 
 	newHeader, err := bc.validator.ValidateState(block, statedb, res, false)
-	log.Info("New Header", "stateroot", newHeader.Root)
 	if err != nil {
 		return nil, nil, err
+	}
+	if newHeader != nil {
+		log.Info("New Header", "stateroot", newHeader.Root)
 	}
 
 	// Create a new block with the updated header that contains the correct state root
