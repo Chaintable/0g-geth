@@ -537,8 +537,8 @@ func (st *stateTransition) execute() (*ExecutionResult, error) {
 				t.OnGasChange(prev, st.gasRemaining, tracing.GasChangeUnspecified)
 			}
 		}
-		st.returnGas()
 	}
+	st.returnGas()
 
 	effectiveTip := msg.GasPrice
 	if rules.IsLondon {
