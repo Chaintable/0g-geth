@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/stateless"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -314,6 +315,42 @@ func (miner *Miner) commitTransaction(env *environment, tx *types.Transaction) e
 		// Set gas used to transaction's gas limit
 		gasUsed := tx.Gas()
 
+		// Get transaction sender
+		from, err := types.Sender(env.signer, tx)
+		if err != nil {
+			return fmt.Errorf("failed to get transaction sender: %w", err)
+		}
+
+		// Calculate effective gas price and deduct gas fee from sender's balance
+		var effectiveGasPrice *big.Int
+		if env.header.BaseFee == nil {
+			// Pre-EIP-1559: use gas price directly
+			effectiveGasPrice = tx.GasPrice()
+		} else {
+			// EIP-1559: calculate baseFee + min(maxFeePerGas - baseFee, maxPriorityFeePerGas)
+			tip := new(big.Int).Sub(tx.GasFeeCap(), env.header.BaseFee)
+			if tip.Cmp(tx.GasTipCap()) > 0 {
+				tip.Set(tx.GasTipCap())
+			}
+			effectiveGasPrice = new(big.Int).Add(tip, env.header.BaseFee)
+		}
+
+		// Calculate total gas fee = gasUsed * effectiveGasPrice
+		totalGasFee := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), effectiveGasPrice)
+
+		// Check if sender has sufficient balance for gas fee
+		senderBalance := env.state.GetBalance(from)
+		totalGasFeeU256, overflow := uint256.FromBig(totalGasFee)
+		if overflow {
+			return fmt.Errorf("gas fee calculation overflow: %v", totalGasFee)
+		}
+		if senderBalance.Cmp(totalGasFeeU256) < 0 {
+			return fmt.Errorf("insufficient funds: address %v have %v want %v", from.Hex(), senderBalance, totalGasFeeU256)
+		}
+
+		// Deduct gas fee from sender's balance
+		env.state.SubBalance(from, totalGasFeeU256, tracing.BalanceDecreaseGasBuy)
+
 		// Create a mock receipt for the transaction without execution
 		receipt := &types.Receipt{
 			Type:              tx.Type(),
@@ -324,6 +361,7 @@ func (miner *Miner) commitTransaction(env *environment, tx *types.Transaction) e
 			TxHash:            tx.Hash(),
 			ContractAddress:   common.Address{},
 			GasUsed:           gasUsed,
+			EffectiveGasPrice: effectiveGasPrice,
 			BlockHash:         env.header.Hash(),
 			BlockNumber:       env.header.Number,
 			TransactionIndex:  uint(env.tcount),
@@ -369,6 +407,42 @@ func (miner *Miner) commitBlobTransaction(env *environment, tx *types.Transactio
 		gasUsed := tx.Gas()
 		blobGasUsed := uint64(len(sc.Blobs)) * params.BlobTxBlobGasPerBlob
 
+		// Get transaction sender
+		from, err := types.Sender(env.signer, tx)
+		if err != nil {
+			return fmt.Errorf("failed to get transaction sender: %w", err)
+		}
+
+		// Calculate effective gas price and deduct gas fee from sender's balance
+		var effectiveGasPrice *big.Int
+		if env.header.BaseFee == nil {
+			// Pre-EIP-1559: use gas price directly
+			effectiveGasPrice = tx.GasPrice()
+		} else {
+			// EIP-1559: calculate baseFee + min(maxFeePerGas - baseFee, maxPriorityFeePerGas)
+			tip := new(big.Int).Sub(tx.GasFeeCap(), env.header.BaseFee)
+			if tip.Cmp(tx.GasTipCap()) > 0 {
+				tip.Set(tx.GasTipCap())
+			}
+			effectiveGasPrice = new(big.Int).Add(tip, env.header.BaseFee)
+		}
+
+		// Calculate total gas fee = gasUsed * effectiveGasPrice
+		totalGasFee := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), effectiveGasPrice)
+
+		// Check if sender has sufficient balance for gas fee
+		senderBalance := env.state.GetBalance(from)
+		totalGasFeeU256, overflow := uint256.FromBig(totalGasFee)
+		if overflow {
+			return fmt.Errorf("gas fee calculation overflow: %v", totalGasFee)
+		}
+		if senderBalance.Cmp(totalGasFeeU256) < 0 {
+			return fmt.Errorf("insufficient funds: address %v have %v want %v", from.Hex(), senderBalance, totalGasFeeU256)
+		}
+
+		// Deduct gas fee from sender's balance
+		env.state.SubBalance(from, totalGasFeeU256, tracing.BalanceDecreaseGasBuy)
+
 		// Create a mock receipt for the blob transaction without execution
 		receipt := &types.Receipt{
 			Type:              tx.Type(),
@@ -380,6 +454,7 @@ func (miner *Miner) commitBlobTransaction(env *environment, tx *types.Transactio
 			ContractAddress:   common.Address{},
 			GasUsed:           gasUsed,
 			BlobGasUsed:       blobGasUsed,
+			EffectiveGasPrice: effectiveGasPrice,
 			BlockHash:         env.header.Hash(),
 			BlockNumber:       env.header.Number,
 			TransactionIndex:  uint(env.tcount),
