@@ -74,6 +74,8 @@ type Oracle struct {
 	maxHeaderHistory, maxBlockHistory uint64
 
 	historyCache *lru.Cache[cacheKey, processedFees]
+
+	startPrice *big.Int
 }
 
 // NewOracle returns a new gasprice oracle which can recommend suitable
@@ -148,6 +150,7 @@ func NewOracle(backend OracleBackend, params Config, startPrice *big.Int) *Oracl
 		maxHeaderHistory: maxHeaderHistory,
 		maxBlockHistory:  maxBlockHistory,
 		historyCache:     cache,
+		startPrice:       startPrice,
 	}
 }
 
@@ -203,7 +206,8 @@ func (oracle *Oracle) SuggestTipCap(ctx context.Context) (*big.Int, error) {
 		// - All the transactions included are sent by the miner itself.
 		// In these cases, use the latest calculated price for sampling.
 		if len(res.values) == 0 {
-			res.values = []*big.Int{lastPrice}
+			defaultGasPrice := new(big.Int).Mul(oracle.startPrice, big.NewInt(2))
+			res.values = []*big.Int{defaultGasPrice}
 		}
 		// Besides, in order to collect enough data for sampling, if nothing
 		// meaningful returned, try to query more blocks. But the maximum
