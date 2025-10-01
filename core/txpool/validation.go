@@ -130,7 +130,7 @@ func ValidateTransaction(tx *types.Transaction, head *types.Header, signer types
 		}
 	}
 	// Ensure the gasprice is high enough to cover the requirement of the calling pool
-	if tx.GasTipCapIntCmp(opts.MinTip) < 0 {
+	if tx.EffectiveGasTipIntCmp(opts.MinTip, head.BaseFee) < 0 {
 		return fmt.Errorf("%w: gas tip cap %v, minimum needed %v", ErrTxGasPriceTooLow, tx.GasTipCap(), opts.MinTip)
 	}
 	if tx.Type() == types.BlobTxType {
