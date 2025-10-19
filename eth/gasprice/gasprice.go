@@ -205,10 +205,20 @@ func (oracle *Oracle) SuggestTipCap(ctx context.Context) (*big.Int, error) {
 		// - The block is empty
 		// - All the transactions included are sent by the miner itself.
 		// In these cases, use the latest calculated price for sampling.
+		defaultGasPrice := new(big.Int).Mul(oracle.startPrice, big.NewInt(2))
 		if len(res.values) == 0 {
-			defaultGasPrice := new(big.Int).Mul(oracle.startPrice, big.NewInt(2))
 			res.values = []*big.Int{defaultGasPrice}
+		} else {
+			// if block gas usage is less than 60%, set block's gasPrice as defaultGasPrice
+			if res.gasLimit > 0 && res.gasUsed*10/res.gasLimit < 6 {
+				for i, value := range res.values {
+					if value.Cmp(defaultGasPrice) > 0 {
+						res.values[i] = defaultGasPrice
+					}
+				}
+			}
 		}
+
 		// Besides, in order to collect enough data for sampling, if nothing
 		// meaningful returned, try to query more blocks. But the maximum
 		// is 2*checkBlocks.
@@ -218,6 +228,7 @@ func (oracle *Oracle) SuggestTipCap(ctx context.Context) (*big.Int, error) {
 			exp++
 			number--
 		}
+
 		results = append(results, res.values...)
 	}
 	price := lastPrice
@@ -237,8 +248,10 @@ func (oracle *Oracle) SuggestTipCap(ctx context.Context) (*big.Int, error) {
 }
 
 type results struct {
-	values []*big.Int
-	err    error
+	gasLimit uint64
+	gasUsed  uint64
+	values   []*big.Int
+	err      error
 }
 
 // getBlockValues calculates the lowest transaction gas price in a given block
@@ -249,7 +262,7 @@ func (oracle *Oracle) getBlockValues(ctx context.Context, blockNum uint64, limit
 	block, err := oracle.backend.BlockByNumber(ctx, rpc.BlockNumber(blockNum))
 	if block == nil {
 		select {
-		case result <- results{nil, err}:
+		case result <- results{0, 0, nil, err}:
 		case <-quit:
 		}
 		return
@@ -284,7 +297,7 @@ func (oracle *Oracle) getBlockValues(ctx context.Context, blockNum uint64, limit
 		}
 	}
 	select {
-	case result <- results{prices, nil}:
+	case result <- results{block.GasLimit(), block.GasUsed(), prices, nil}:
 	case <-quit:
 	}
 }
