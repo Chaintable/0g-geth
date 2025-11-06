@@ -1,40 +1,25 @@
-# Support setting various labels on the final image
-ARG COMMIT=""
-ARG VERSION=""
-ARG BUILDNUM=""
-
 # Build Geth in a stock Go builder container
 FROM golang:1.24-alpine AS builder
-
 ARG GITHUB_TOKEN
 
 RUN git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com".insteadOf "https://github.com"
 
+WORKDIR /go-ethereum
 
-RUN apk add --no-cache gcc musl-dev linux-headers git
+COPY . .
 
-# Get dependencies - will also be cached if we won't change go.mod/go.sum
-COPY go.mod /go-ethereum/
-COPY go.sum /go-ethereum/
-RUN cd /go-ethereum && go mod download
+RUN make geth
 
-ADD . /go-ethereum
-RUN cd /go-ethereum && go run build/ci.go install -static ./cmd/geth
+FROM ubuntu:24.04
 
+RUN apt-get update && apt-get install -y ca-certificates wget libsnappy-dev libjemalloc-dev
 
 
-# Pull Geth into a second stage deploy alpine container
-FROM alpine:latest
+WORKDIR /app
 
-RUN apk add --no-cache ca-certificates
-COPY --from=builder /go-ethereum/build/bin/geth /usr/local/bin/
+COPY --from=builder /go-ethereum/build/bin /app
 
-EXPOSE 8545 8546 30303 30303/udp
-ENTRYPOINT ["geth"]
 
-# Add some metadata labels to help programmatic image consumption
-ARG COMMIT=""
-ARG VERSION=""
-ARG BUILDNUM=""
+EXPOSE 8545 8546 33688 33688/udp
 
-LABEL commit="$COMMIT" version="$VERSION" buildnum="$BUILDNUM"
+ENTRYPOINT ["/app/geth"]
