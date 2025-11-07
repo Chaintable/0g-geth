@@ -134,6 +134,7 @@ type PayloadStatusV1 struct {
 	Witness         *hexutil.Bytes `json:"witness,omitempty"`
 	LatestValidHash *common.Hash   `json:"latestValidHash"`
 	ValidationError *string        `json:"validationError"`
+	Requests        [][]byte       `json:"executionRequests"`
 }
 
 type TransitionConfigurationV1 struct {
