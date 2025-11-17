@@ -2491,31 +2491,31 @@ func (bc *BlockChain) reorg(oldHead *types.Header, newHead *types.Header) error 
 // updating. It relies on the additional SetCanonical call to finalize the entire
 // procedure.
 // Returns the new header with actual state root and witness.
-func (bc *BlockChain) InsertBlockWithoutSetHead(block *types.Block, makeWitness bool) (*types.Header, *stateless.Witness, error) {
+func (bc *BlockChain) InsertBlockWithoutSetHead(block *types.Block, makeWitness bool) (*types.Header, [][]byte, *stateless.Witness, error) {
 	if !bc.chainmu.TryLock() {
-		return nil, nil, errChainStopped
+		return nil, nil, nil, errChainStopped
 	}
 	defer bc.chainmu.Unlock()
 
 	// Process the block to get the new header with actual state root
 	parent := bc.GetHeader(block.ParentHash(), block.NumberU64()-1)
 	if parent == nil {
-		return nil, nil, consensus.ErrUnknownAncestor
+		return nil, nil, nil, consensus.ErrUnknownAncestor
 	}
 
 	statedb, err := state.New(parent.Root, bc.statedb)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	res, err := bc.processor.Process(block, statedb, bc.vmConfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	newHeader, err := bc.validator.ValidateState(block, statedb, res, false)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if newHeader != nil {
 		log.Info("New Header", "stateroot", newHeader.Root)
@@ -2543,14 +2543,14 @@ func (bc *BlockChain) InsertBlockWithoutSetHead(block *types.Block, makeWitness 
 		rawdb.DeleteHeader(batch, block.Hash(), block.NumberU64())
 
 		if err := batch.Write(); err != nil {
-			return nil, nil, fmt.Errorf("failed to update hash-to-number mapping: %w", err)
+			return nil, nil, nil, fmt.Errorf("failed to update hash-to-number mapping: %w", err)
 		}
 	}
 
 	// Write the block with state
 	err = bc.writeBlockWithState(updatedBlock, res.Receipts, statedb)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Generate witness if requested
@@ -2558,11 +2558,11 @@ func (bc *BlockChain) InsertBlockWithoutSetHead(block *types.Block, makeWitness 
 	if makeWitness && bc.chainConfig.IsByzantium(block.Number()) {
 		witness, err = stateless.NewWitness(updatedBlock.Header(), bc)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
-	return newHeader, witness, nil
+	return newHeader, res.Requests, witness, nil
 }
 
 // SetCanonical rewinds the chain to set the new head block as the specified

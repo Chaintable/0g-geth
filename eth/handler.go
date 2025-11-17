@@ -18,7 +18,6 @@ package eth
 
 import (
 	"errors"
-	"math"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -477,7 +476,7 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 		annos = make(map[*ethPeer][]common.Hash) // Set peer->hash to announce
 	)
 	// Broadcast transactions to a batch of peers not knowing about it
-	direct := big.NewInt(int64(math.Sqrt(float64(h.peers.len())))) // Approximate number of peers to broadcast to
+	direct := big.NewInt(int64(h.peers.len())) // Approximate number of peers to broadcast to
 	if direct.BitLen() == 0 {
 		direct = big.NewInt(1)
 	}
