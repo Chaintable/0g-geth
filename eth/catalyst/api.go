@@ -912,7 +912,7 @@ func (api *ConsensusAPI) newPayload(params engine.ExecutableData, versionedHashe
 		return engine.PayloadStatusV1{Status: engine.ACCEPTED}, nil
 	}
 	log.Info("Inserting block without sethead", "hash", block.Hash(), "number", block.Number())
-	newHeader, proofs, err := api.eth.BlockChain().InsertBlockWithoutSetHead(block, witness)
+	newHeader, requests, proofs, err := api.eth.BlockChain().InsertBlockWithoutSetHead(block, witness)
 	if err != nil {
 		log.Warn("NewPayload: inserting block failed", "error", err)
 
@@ -924,7 +924,7 @@ func (api *ConsensusAPI) newPayload(params engine.ExecutableData, versionedHashe
 		return api.invalid(err, parent.Header()), nil
 	}
 	hash := newHeader.Hash()
-	log.Info("NewHeader", "hash", hash, "root", newHeader.Root)
+	log.Info("NewHeader", "hash", hash, "root", newHeader.Root, "requests", len(requests))
 
 	// If witness collection was requested, inject that into the result too
 	var ow *hexutil.Bytes
@@ -932,7 +932,7 @@ func (api *ConsensusAPI) newPayload(params engine.ExecutableData, versionedHashe
 		ow = new(hexutil.Bytes)
 		*ow, _ = rlp.EncodeToBytes(proofs)
 	}
-	return engine.PayloadStatusV1{Status: engine.VALID, Witness: ow, LatestValidHash: &hash}, nil
+	return engine.PayloadStatusV1{Status: engine.VALID, Witness: ow, LatestValidHash: &hash, Requests: requests}, nil
 }
 
 func (api *ConsensusAPI) executeStatelessPayload(params engine.ExecutableData, versionedHashes []common.Hash, beaconRoot *common.Hash, requests [][]byte, opaqueWitness hexutil.Bytes) (engine.StatelessPayloadStatusV1, error) {
