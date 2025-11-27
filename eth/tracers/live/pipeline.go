@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/tracers"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -134,13 +133,7 @@ func (t *NativePipelineTracer) OnBlockEnd(err error) {
 func (t *NativePipelineTracer) OnBlockValidated(block *types.Block) {
 	if t.tracer != nil {
 		if block != nil {
-			blockStr, _ := json.Marshal(block)
-			ctx, _ := json.Marshal(tracer.BlockCtx)
-			log.Info("OnBlockValidated", "block", string(blockStr), "blockCtx", string(ctx))
-			tracer.BlockCtx = &tracer.ExtraInfo{
-				BlockNumber: block.Number().Uint64(),
-				BlockHash:   block.Hash(),
-			}
+			tracer.BlockCtx.BlockHash = block.Hash()
 			tracer.BlockCtx.BlockHeader = util.BuildPilelineBlockHeader(block)
 			tracer.BlockCtx.BlockFile.Block = util.BuildPipelineBlock(block)
 		}
