@@ -2492,21 +2492,6 @@ func (bc *BlockChain) reorg(oldHead *types.Header, newHead *types.Header) error 
 // procedure.
 // Returns the new header with actual state root and witness.
 func (bc *BlockChain) InsertBlockWithoutSetHead(block *types.Block, makeWitness bool) (*types.Header, [][]byte, *stateless.Witness, error) {
-	if bc.logger != nil && bc.logger.OnBlockStart != nil {
-		bc.logger.OnBlockStart(tracing.BlockEvent{
-			Block:     block,
-			Finalized: bc.CurrentFinalBlock(),
-			Safe:      bc.CurrentSafeBlock(),
-		})
-	}
-	// if bc.logger != nil && bc.logger.OnBlockDBStart != nil {
-	// 	bc.logger.OnBlockDBStart(statedb)
-	// }
-	// if bc.logger != nil && bc.logger.OnBlockEnd != nil {
-	// 	defer func() {
-	// 		bc.logger.OnBlockEnd(blockEndErr)
-	// 	}()
-	// }
 	if !bc.chainmu.TryLock() {
 		return nil, nil, nil, errChainStopped
 	}
