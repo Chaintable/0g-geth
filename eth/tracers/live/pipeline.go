@@ -133,6 +133,10 @@ func (t *NativePipelineTracer) OnBlockEnd(err error) {
 func (t *NativePipelineTracer) OnBlockValidated(block *types.Block) {
 	if t.tracer != nil {
 		if block != nil {
+			tracer.BlockCtx = &tracer.ExtraInfo{
+				BlockNumber: block.Number().Uint64(),
+				BlockHash:   block.Hash(),
+			}
 			tracer.BlockCtx.BlockHeader = util.BuildPilelineBlockHeader(block)
 			tracer.BlockCtx.BlockFile.Block = util.BuildPipelineBlock(block)
 		}
