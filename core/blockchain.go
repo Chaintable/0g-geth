@@ -2491,7 +2491,19 @@ func (bc *BlockChain) reorg(oldHead *types.Header, newHead *types.Header) error 
 // updating. It relies on the additional SetCanonical call to finalize the entire
 // procedure.
 // Returns the new header with actual state root and witness.
-func (bc *BlockChain) InsertBlockWithoutSetHead(block *types.Block, makeWitness bool) (*types.Header, [][]byte, *stateless.Witness, error) {
+func (bc *BlockChain) InsertBlockWithoutSetHead(block *types.Block, makeWitness bool) (resHeader *types.Header, requests [][]byte, resWitness *stateless.Witness, blockEndErr error) {
+	if bc.logger != nil && bc.logger.OnBlockStart != nil {
+		bc.logger.OnBlockStart(tracing.BlockEvent{
+			Block:     block,
+			Finalized: bc.CurrentFinalBlock(),
+			Safe:      bc.CurrentSafeBlock(),
+		})
+	}
+	if bc.logger != nil && bc.logger.OnBlockEnd != nil {
+		defer func() {
+			bc.logger.OnBlockEnd(blockEndErr)
+		}()
+	}
 	if !bc.chainmu.TryLock() {
 		return nil, nil, nil, errChainStopped
 	}
@@ -2524,6 +2536,9 @@ func (bc *BlockChain) InsertBlockWithoutSetHead(block *types.Block, makeWitness 
 	// Create a new block with the updated header that contains the correct state root
 	log.Info("Block", "hash", block.Hash(), "number", block.Number())
 	updatedBlock := block.WithSeal(newHeader)
+	if bc.logger != nil && bc.logger.OnBlockValidated != nil {
+		bc.logger.OnBlockValidated(updatedBlock)
+	}
 	// Print the hash of the updated block for debugging purposes
 	log.Info("Updated Block Hash", "hash", updatedBlock.Hash())
 
