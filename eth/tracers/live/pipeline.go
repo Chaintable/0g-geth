@@ -134,7 +134,9 @@ func (t *NativePipelineTracer) OnBlockEnd(err error) {
 func (t *NativePipelineTracer) OnBlockValidated(block *types.Block) {
 	if t.tracer != nil {
 		if block != nil {
-			log.Info("OnBlockValidated", "block", block)
+			blockStr, _ := json.Marshal(block)
+			ctx, _ := json.Marshal(tracer.BlockCtx)
+			log.Info("OnBlockValidated", "block", string(blockStr), "blockCtx", string(ctx))
 			tracer.BlockCtx = &tracer.ExtraInfo{
 				BlockNumber: block.Number().Uint64(),
 				BlockHash:   block.Hash(),
