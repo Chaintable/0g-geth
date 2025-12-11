@@ -61,11 +61,6 @@ jobs:
           build-args: GITHUB_TOKEN=${{ steps.generate-token.outputs.token }}
           provenance: false
 
-      - name: Lark Notification
-        continue-on-error: true
-        run: |
-          notiv3 "Blockchain 0g image pushed 🎉" ${REGISTRY}/${IMAGE}:${REVISION}
-
   merge-docker-manifest:
     runs-on: [self-hosted, general]
     needs: build-artifacts
