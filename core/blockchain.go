@@ -2831,6 +2831,9 @@ func (bc *BlockChain) GetTrieFlushInterval() time.Duration {
 
 // pushBlockChange push block change to kafka, support debank union nodes
 func (bc *BlockChain) pushBlockChange(block *types.Block) {
+	if bc.vmConfig.Tracer == nil {
+		return
+	}
 	// 先确保 pipeline tracer 不为空，然后再判断是否需要push kafka
 	// 上一个push kafka的block, 必然存在(至少有genesis block)
 	// 上一个push kafka的block比当前的head block还要新，说明有unwind回退，不需要处理, 即使是fork，等有更新的block的时候再一起push
