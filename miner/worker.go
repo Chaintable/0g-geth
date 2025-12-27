@@ -132,33 +132,32 @@ func (miner *Miner) generateWork(params *generateParams, witness bool) *newPaylo
 		if err := core.ParseDepositLogs(&requests, allLogs, miner.chainConfig); err != nil {
 			return &newPayloadResult{err: err}
 		}
-		if miner.chainConfig.IsDelegationActive(work.header.Number, work.header.Time) {
-			if len(params.withdrawals) > 0 {
-				firstWithdrawal := params.withdrawals[0]
-				if firstWithdrawal.Validator == math.MaxUint64 {
-					amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(ethparams.GWei))
-					if err := core.ProcessStakingDistribution(work.evm, firstWithdrawal.Address, amount); err != nil {
-						log.Error("could not process staking distribution", "err", err)
+		isDelegationActive := miner.chainConfig.IsDelegationActive(work.header.Number, work.header.Time)
+		if len(params.withdrawals) > 0 {
+			firstWithdrawal := params.withdrawals[0]
+			if firstWithdrawal.Validator == math.MaxUint64 {
+				amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(ethparams.GWei))
+				if err := core.ProcessStakingDistribution(work.evm, firstWithdrawal.Address, amount, isDelegationActive); err != nil {
+					log.Error("could not process staking distribution", "err", err)
+				}
+			}
+		}
+		if miner.chainConfig.IsRestakingActive(work.header.Number, work.header.Time) {
+			if len(params.withdrawals) > 1 {
+				secondWithdrawal := params.withdrawals[1]
+				if secondWithdrawal.Validator == math.MaxUint64 {
+					amount := new(big.Int).Mul(new(big.Int).SetUint64(secondWithdrawal.Amount), big.NewInt(ethparams.GWei))
+					if err := core.ProcessRestakingDistribution(work.evm, secondWithdrawal.Address, amount); err != nil {
+						log.Error("could not process restaking distribution", "err", err)
 					}
 				}
 			}
-			if miner.chainConfig.IsRestakingActive(work.header.Number, work.header.Time) {
-				if len(params.withdrawals) > 1 {
-					secondWithdrawal := params.withdrawals[1]
-					if secondWithdrawal.Validator == math.MaxUint64 {
-						amount := new(big.Int).Mul(new(big.Int).SetUint64(secondWithdrawal.Amount), big.NewInt(ethparams.GWei))
-						if err := core.ProcessRestakingDistribution(work.evm, secondWithdrawal.Address, amount); err != nil {
-							log.Error("could not process restaking distribution", "err", err)
-						}
-					}
-				}
-				if len(params.withdrawals) > 2 {
-					thirdWithdrawal := params.withdrawals[2]
-					if thirdWithdrawal.Validator == math.MaxUint64 {
-						amount := new(big.Int).Mul(new(big.Int).SetUint64(thirdWithdrawal.Amount), big.NewInt(ethparams.GWei))
-						if err := core.ProcessBaseInflation(work.evm, thirdWithdrawal.Address, amount); err != nil {
-							log.Error("could not process base inflation", "err", err)
-						}
+			if len(params.withdrawals) > 2 {
+				thirdWithdrawal := params.withdrawals[2]
+				if thirdWithdrawal.Validator == math.MaxUint64 {
+					amount := new(big.Int).Mul(new(big.Int).SetUint64(thirdWithdrawal.Amount), big.NewInt(ethparams.GWei))
+					if err := core.ProcessBaseInflation(work.evm, thirdWithdrawal.Address, amount); err != nil {
+						log.Error("could not process base inflation", "err", err)
 					}
 				}
 			}
