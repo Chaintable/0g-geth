@@ -323,10 +323,16 @@ func (miner *Miner) commitTransaction(env *environment, tx *types.Transaction) e
 
 		// Calculate effective gas price and deduct gas fee from sender's balance
 		var effectiveGasPrice *big.Int
-		if tx.GasFeeCap() != nil {
-			effectiveGasPrice = tx.GasFeeCap()
-		} else {
+		if env.header.BaseFee == nil {
+			// Pre-EIP-1559: use gas price directly
 			effectiveGasPrice = tx.GasPrice()
+		} else {
+			// EIP-1559: calculate baseFee + min(maxFeePerGas - baseFee, maxPriorityFeePerGas)
+			tip := new(big.Int).Sub(tx.GasFeeCap(), env.header.BaseFee)
+			if tip.Cmp(tx.GasTipCap()) > 0 {
+				tip.Set(tx.GasTipCap())
+			}
+			effectiveGasPrice = new(big.Int).Add(tip, env.header.BaseFee)
 		}
 
 		// Calculate total gas fee = gasUsed * effectiveGasPrice
