@@ -323,7 +323,7 @@ func ProcessStakingDistribution(evm *vm.EVM, address common.Address, amount *big
 	}
 	data := make([]byte, 32)
 	amount.FillBytes(data)
-	addr := address
+	addr := params.StakingContractAddress
 	msg := &Message{
 		From: params.SystemAddress,
 		// Value:     amount,
