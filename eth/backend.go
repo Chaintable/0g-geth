@@ -226,8 +226,8 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 	if config.OverrideVerkle != nil {
 		overrides.OverrideVerkle = config.OverrideVerkle
 	}
-	if config.OverrideDelegationActivation != nil {
-		overrides.OverrideDelegationActivation = config.OverrideDelegationActivation
+	if config.OverrideStakingActivation != nil {
+		overrides.OverrideStakingActivation = config.OverrideStakingActivation
 	}
 	if config.OverrideRestakingActivation != nil {
 		overrides.OverrideRestakingActivation = config.OverrideRestakingActivation

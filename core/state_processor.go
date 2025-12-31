@@ -115,12 +115,12 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		if err := ParseDepositLogs(&requests, allLogs, p.config); err != nil {
 			return nil, err
 		}
-		isDelegationActive := p.config.IsDelegationActive(block.Number(), block.Time())
+		isStakingActive := p.config.IsStakingActive(block.Number(), block.Time())
 		if len(block.Withdrawals()) > 0 {
 			firstWithdrawal := block.Withdrawals()[0]
 			if firstWithdrawal.Validator == math.MaxUint64 {
 				amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(params.GWei))
-				if err := ProcessStakingDistribution(evm, firstWithdrawal.Address, amount, isDelegationActive); err != nil {
+				if err := ProcessStakingDistribution(evm, firstWithdrawal.Address, amount, isStakingActive); err != nil {
 					log.Error("could not process staking distribution", "err", err)
 				}
 			}
@@ -313,7 +313,7 @@ func ProcessConsolidationQueue(requests *[][]byte, evm *vm.EVM) error {
 }
 
 // ProcessStakingDistribution
-func ProcessStakingDistribution(evm *vm.EVM, address common.Address, amount *big.Int, isDelegationActive bool) error {
+func ProcessStakingDistribution(evm *vm.EVM, address common.Address, amount *big.Int, isStakingActive bool) error {
 	if tracer := evm.Config.Tracer; tracer != nil {
 		onSystemCallStart(tracer, evm.GetVMContext())
 		if tracer.OnSystemCallEnd != nil {
@@ -323,7 +323,7 @@ func ProcessStakingDistribution(evm *vm.EVM, address common.Address, amount *big
 	data := make([]byte, 32)
 	amount.FillBytes(data)
 	addr := address
-	if isDelegationActive {
+	if isStakingActive {
 		addr = params.StakingContractAddress
 	}
 	msg := &Message{

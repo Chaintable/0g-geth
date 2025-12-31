@@ -132,12 +132,12 @@ func (miner *Miner) generateWork(params *generateParams, witness bool) *newPaylo
 		if err := core.ParseDepositLogs(&requests, allLogs, miner.chainConfig); err != nil {
 			return &newPayloadResult{err: err}
 		}
-		isDelegationActive := miner.chainConfig.IsDelegationActive(work.header.Number, work.header.Time)
+		isStakingActive := miner.chainConfig.IsStakingActive(work.header.Number, work.header.Time)
 		if len(params.withdrawals) > 0 {
 			firstWithdrawal := params.withdrawals[0]
 			if firstWithdrawal.Validator == math.MaxUint64 {
 				amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(ethparams.GWei))
-				if err := core.ProcessStakingDistribution(work.evm, firstWithdrawal.Address, amount, isDelegationActive); err != nil {
+				if err := core.ProcessStakingDistribution(work.evm, firstWithdrawal.Address, amount, isStakingActive); err != nil {
 					log.Error("could not process staking distribution", "err", err)
 				}
 			}

@@ -55,7 +55,7 @@ var (
 			utils.CachePreimagesFlag,
 			utils.OverridePrague,
 			utils.OverrideVerkle,
-			utils.OverrideDelegationActivation,
+			utils.OverrideStakingActivation,
 			utils.OverrideRestakingActivation,
 		}, utils.DatabaseFlags),
 		Description: `
@@ -238,9 +238,9 @@ func initGenesis(ctx *cli.Context) error {
 		v := ctx.Uint64(utils.OverrideVerkle.Name)
 		overrides.OverrideVerkle = &v
 	}
-	if ctx.IsSet(utils.OverrideDelegationActivation.Name) {
-		v := ctx.Uint64(utils.OverrideDelegationActivation.Name)
-		overrides.OverrideDelegationActivation = &v
+	if ctx.IsSet(utils.OverrideStakingActivation.Name) {
+		v := ctx.Uint64(utils.OverrideStakingActivation.Name)
+		overrides.OverrideStakingActivation = &v
 	}
 	if ctx.IsSet(utils.OverrideRestakingActivation.Name) {
 		v := ctx.Uint64(utils.OverrideRestakingActivation.Name)

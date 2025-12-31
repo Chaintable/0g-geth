@@ -63,9 +63,9 @@ var (
 		PragueTime:              newUint64(1746612311),
 		DepositContractAddress:  common.HexToAddress("0x00000000219ab540356cbb839cbe05303d7705fa"),
 		Ethash:                  new(EthashConfig),
-		// DelegationActivationTime is the activation time of Delegation logic
-		DelegationActivationTime: newUint64(1746612311),
-		RestakingActivationTime:  newUint64(1746612311),
+		// StakingActivationTime is the activation time of Delegation logic
+		StakingActivationTime:   newUint64(1746612311),
+		RestakingActivationTime: newUint64(1746612311),
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
@@ -96,9 +96,9 @@ var (
 		PragueTime:              newUint64(1740434112),
 		DepositContractAddress:  common.HexToAddress("0x4242424242424242424242424242424242424242"),
 		Ethash:                  new(EthashConfig),
-		// DelegationActivationTime is the activation time of Delegation logic
-		DelegationActivationTime: newUint64(1740434112),
-		RestakingActivationTime:  newUint64(1740434112),
+		// StakingActivationTime is the activation time of Delegation logic
+		StakingActivationTime:   newUint64(1740434112),
+		RestakingActivationTime: newUint64(1740434112),
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
@@ -129,9 +129,9 @@ var (
 		PragueTime:              newUint64(1741159776),
 		DepositContractAddress:  common.HexToAddress("0x7f02c3e3c98b133055b8b348b2ac625669ed295d"),
 		Ethash:                  new(EthashConfig),
-		// DelegationActivationTime is the activation time of Delegation logic
-		DelegationActivationTime: newUint64(1741159776),
-		RestakingActivationTime:  newUint64(1741159776),
+		// StakingActivationTime is the activation time of Delegation logic
+		StakingActivationTime:   newUint64(1741159776),
+		RestakingActivationTime: newUint64(1741159776),
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
@@ -162,9 +162,9 @@ var (
 		PragueTime:              newUint64(1742999832),
 		DepositContractAddress:  common.HexToAddress("0x00000000219ab540356cBB839Cbe05303d7705Fa"),
 		Ethash:                  new(EthashConfig),
-		// DelegationActivationTime is the activation time of Delegation logic
-		DelegationActivationTime: newUint64(1742999832),
-		RestakingActivationTime:  newUint64(1742999832),
+		// StakingActivationTime is the activation time of Delegation logic
+		StakingActivationTime:   newUint64(1742999832),
+		RestakingActivationTime: newUint64(1742999832),
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
@@ -198,9 +198,9 @@ var (
 		VerkleTime:              nil,
 		Ethash:                  new(EthashConfig),
 		Clique:                  nil,
-		// DelegationActivationTime is the activation time of Delegation logic
-		DelegationActivationTime: nil,
-		RestakingActivationTime:  nil,
+		// StakingActivationTime is the activation time of Delegation logic
+		StakingActivationTime:   nil,
+		RestakingActivationTime: nil,
 	}
 
 	AllDevChainProtocolChanges = &ChainConfig{
@@ -222,9 +222,9 @@ var (
 		CancunTime:              newUint64(0),
 		TerminalTotalDifficulty: big.NewInt(0),
 		PragueTime:              newUint64(0),
-		// DelegationActivationTime is the activation time of Delegation logic
-		DelegationActivationTime: newUint64(0),
-		RestakingActivationTime:  newUint64(0),
+		// StakingActivationTime is the activation time of Delegation logic
+		StakingActivationTime:   newUint64(0),
+		RestakingActivationTime: newUint64(0),
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
@@ -259,9 +259,9 @@ var (
 		TerminalTotalDifficulty: big.NewInt(math.MaxInt64),
 		Ethash:                  nil,
 		Clique:                  &CliqueConfig{Period: 0, Epoch: 30000},
-		// DelegationActivationTime is the activation time of Delegation logic
-		DelegationActivationTime: nil,
-		RestakingActivationTime:  nil,
+		// StakingActivationTime is the activation time of Delegation logic
+		StakingActivationTime:   nil,
+		RestakingActivationTime: nil,
 	}
 
 	// TestChainConfig contains every protocol change (EIPs) introduced
@@ -292,9 +292,9 @@ var (
 		TerminalTotalDifficulty: big.NewInt(math.MaxInt64),
 		Ethash:                  new(EthashConfig),
 		Clique:                  nil,
-		// DelegationActivationTime is the activation time of Delegation logic
-		DelegationActivationTime: nil,
-		RestakingActivationTime:  nil,
+		// StakingActivationTime is the activation time of Delegation logic
+		StakingActivationTime:   nil,
+		RestakingActivationTime: nil,
 	}
 
 	// MergedTestChainConfig contains every protocol change (EIPs) introduced
@@ -325,9 +325,9 @@ var (
 		TerminalTotalDifficulty: big.NewInt(0),
 		Ethash:                  new(EthashConfig),
 		Clique:                  nil,
-		// DelegationActivationTime is the activation time of Delegation logic
-		DelegationActivationTime: newUint64(0),
-		RestakingActivationTime:  newUint64(0),
+		// StakingActivationTime is the activation time of Delegation logic
+		StakingActivationTime:   newUint64(0),
+		RestakingActivationTime: newUint64(0),
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
@@ -362,9 +362,9 @@ var (
 		TerminalTotalDifficulty: big.NewInt(math.MaxInt64),
 		Ethash:                  new(EthashConfig),
 		Clique:                  nil,
-		// DelegationActivationTime is the activation time of Delegation logic
-		DelegationActivationTime: nil,
-		RestakingActivationTime:  nil,
+		// StakingActivationTime is the activation time of Delegation logic
+		StakingActivationTime:   nil,
+		RestakingActivationTime: nil,
 	}
 	TestRules = TestChainConfig.Rules(new(big.Int), false, 0)
 )
@@ -446,8 +446,8 @@ type ChainConfig struct {
 	TerminalTotalDifficulty *big.Int `json:"terminalTotalDifficulty,omitempty"`
 
 	DepositContractAddress common.Address `json:"depositContractAddress,omitempty"`
-	// DelegationActivationTime is the activation time of Delegation logic
-	DelegationActivationTime *uint64 `json:"DelegationActivationTime,omitempty"`
+	// StakingActivationTime is the activation time of Delegation logic
+	StakingActivationTime *uint64 `json:"StakingActivationTime,omitempty"`
 	// RestakingActivationTime is the activation time of Delegation logic
 	RestakingActivationTime *uint64 `json:"RestakingActivationTime,omitempty"`
 
@@ -564,8 +564,8 @@ func (c *ChainConfig) Description() string {
 	if c.VerkleTime != nil {
 		banner += fmt.Sprintf(" - Verkle:                      @%-10v\n", *c.VerkleTime)
 	}
-	if c.DelegationActivationTime != nil {
-		banner += fmt.Sprintf(" - DelegationActivationTime:    @%-10v\n", *c.DelegationActivationTime)
+	if c.StakingActivationTime != nil {
+		banner += fmt.Sprintf(" - StakingActivationTime:    @%-10v\n", *c.StakingActivationTime)
 	}
 	if c.RestakingActivationTime != nil {
 		banner += fmt.Sprintf(" - RestakingActivationTime:    @%-10v\n", *c.RestakingActivationTime)
@@ -683,8 +683,8 @@ func (c *ChainConfig) IsPrague(num *big.Int, time uint64) bool {
 	return c.IsLondon(num) && isTimestampForked(c.PragueTime, time)
 }
 
-func (c *ChainConfig) IsDelegationActive(num *big.Int, time uint64) bool {
-	return c.IsPrague(num, time) && (c.DelegationActivationTime != nil) && (time >= *c.DelegationActivationTime)
+func (c *ChainConfig) IsStakingActive(num *big.Int, time uint64) bool {
+	return c.IsPrague(num, time) && (c.StakingActivationTime != nil) && (time >= *c.StakingActivationTime)
 }
 
 func (c *ChainConfig) IsRestakingActive(num *big.Int, time uint64) bool {

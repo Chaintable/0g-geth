@@ -367,12 +367,12 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig, 
 		if err := core.ParseDepositLogs(&requests, allLogs, chainConfig); err != nil {
 			return nil, nil, nil, NewError(ErrorEVM, fmt.Errorf("could not parse requests logs: %v", err))
 		}
-		isDelegationActive := chainConfig.IsDelegationActive(vmContext.BlockNumber, vmContext.Time)
+		isStakingActive := chainConfig.IsStakingActive(vmContext.BlockNumber, vmContext.Time)
 		if len(pre.Env.Withdrawals) > 0 {
 			firstWithdrawal := pre.Env.Withdrawals[0]
 			if firstWithdrawal.Validator == gomath.MaxUint64 {
 				amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(params.GWei))
-				if err := core.ProcessStakingDistribution(evm, firstWithdrawal.Address, amount, isDelegationActive); err != nil {
+				if err := core.ProcessStakingDistribution(evm, firstWithdrawal.Address, amount, isStakingActive); err != nil {
 					log.Error("could not process staking distribution", "err", err)
 				}
 			}
