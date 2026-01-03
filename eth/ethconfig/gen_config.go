@@ -55,7 +55,7 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		RPCTxFeeCap             float64
 		OverridePrague          *uint64 `toml:",omitempty"`
 		OverrideVerkle          *uint64 `toml:",omitempty"`
-		OverrideDelegationActivation *uint64 `toml:",omitempty"`
+		OverrideStakingActivation *uint64 `toml:",omitempty"`
 		OverrideRestakingActivation *uint64 `toml:",omitempty"`
 	}
 	var enc Config
@@ -97,7 +97,7 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.RPCTxFeeCap = c.RPCTxFeeCap
 	enc.OverridePrague = c.OverridePrague
 	enc.OverrideVerkle = c.OverrideVerkle
-	enc.OverrideDelegationActivation = c.OverrideDelegationActivation
+	enc.OverrideStakingActivation = c.OverrideStakingActivation
 	enc.OverrideRestakingActivation = c.OverrideRestakingActivation
 	return &enc, nil
 }
@@ -143,7 +143,7 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		RPCTxFeeCap             *float64
 		OverridePrague          *uint64 `toml:",omitempty"`
 		OverrideVerkle          *uint64 `toml:",omitempty"`
-		OverrideDelegationActivation  *uint64 `toml:",omitempty"`
+		OverrideStakingActivation  *uint64 `toml:",omitempty"`
 		OverrideRestakingActivation  *uint64 `toml:",omitempty"`
 	}
 	var dec Config
@@ -264,8 +264,8 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	if dec.OverrideVerkle != nil {
 		c.OverrideVerkle = dec.OverrideVerkle
 	}
-	if dec.OverrideDelegationActivation != nil {
-		c.OverrideDelegationActivation = dec.OverrideDelegationActivation
+	if dec.OverrideStakingActivation != nil {
+		c.OverrideStakingActivation = dec.OverrideStakingActivation
 	}
 	if dec.OverrideRestakingActivation != nil {
 		c.OverrideRestakingActivation = dec.OverrideRestakingActivation

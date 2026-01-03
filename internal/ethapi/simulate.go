@@ -334,33 +334,32 @@ func (sim *simulator) processBlock(ctx context.Context, block *simBlock, header,
 		if err := core.ParseDepositLogs(&requests, allLogs, sim.chainConfig); err != nil {
 			return nil, nil, nil, err
 		}
-		if sim.chainConfig.IsDelegationActive(header.Number, header.Time) {
-			if block.BlockOverrides.Withdrawals != nil && len(*block.BlockOverrides.Withdrawals) > 0 {
-				firstWithdrawal := (*block.BlockOverrides.Withdrawals)[0]
-				if firstWithdrawal.Validator == math.MaxUint64 {
-					amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(params.GWei))
-					if err := core.ProcessStakingDistribution(evm, firstWithdrawal.Address, amount); err != nil {
-						log.Error("could not process staking distribution", "err", err)
+		isStakingActive := sim.chainConfig.IsStakingActive(header.Number, header.Time)
+		if block.BlockOverrides.Withdrawals != nil && len(*block.BlockOverrides.Withdrawals) > 0 {
+			firstWithdrawal := (*block.BlockOverrides.Withdrawals)[0]
+			if firstWithdrawal.Validator == math.MaxUint64 {
+				amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(params.GWei))
+				if err := core.ProcessStakingDistribution(evm, firstWithdrawal.Address, amount, isStakingActive); err != nil {
+					log.Error("could not process staking distribution", "err", err)
+				}
+			}
+		}
+		if sim.chainConfig.IsRestakingActive(header.Number, header.Time) {
+			if block.BlockOverrides.Withdrawals != nil && len(*block.BlockOverrides.Withdrawals) > 1 {
+				secondWithdrawal := (*block.BlockOverrides.Withdrawals)[1]
+				if secondWithdrawal.Validator == math.MaxUint64 {
+					amount := new(big.Int).Mul(new(big.Int).SetUint64(secondWithdrawal.Amount), big.NewInt(params.GWei))
+					if err := core.ProcessRestakingDistribution(evm, secondWithdrawal.Address, amount); err != nil {
+						log.Error("could not process restaking distribution", "err", err)
 					}
 				}
 			}
-			if sim.chainConfig.IsRestakingActive(header.Number, header.Time) {
-				if block.BlockOverrides.Withdrawals != nil && len(*block.BlockOverrides.Withdrawals) > 1 {
-					secondWithdrawal := (*block.BlockOverrides.Withdrawals)[1]
-					if secondWithdrawal.Validator == math.MaxUint64 {
-						amount := new(big.Int).Mul(new(big.Int).SetUint64(secondWithdrawal.Amount), big.NewInt(params.GWei))
-						if err := core.ProcessRestakingDistribution(evm, secondWithdrawal.Address, amount); err != nil {
-							log.Error("could not process restaking distribution", "err", err)
-						}
-					}
-				}
-				if block.BlockOverrides.Withdrawals != nil && len(*block.BlockOverrides.Withdrawals) > 2 {
-					thirdWithdrawal := (*block.BlockOverrides.Withdrawals)[2]
-					if thirdWithdrawal.Validator == math.MaxUint64 {
-						amount := new(big.Int).Mul(new(big.Int).SetUint64(thirdWithdrawal.Amount), big.NewInt(params.GWei))
-						if err := core.ProcessBaseInflation(evm, thirdWithdrawal.Address, amount); err != nil {
-							log.Error("could not process base inflation", "err", err)
-						}
+			if block.BlockOverrides.Withdrawals != nil && len(*block.BlockOverrides.Withdrawals) > 2 {
+				thirdWithdrawal := (*block.BlockOverrides.Withdrawals)[2]
+				if thirdWithdrawal.Validator == math.MaxUint64 {
+					amount := new(big.Int).Mul(new(big.Int).SetUint64(thirdWithdrawal.Amount), big.NewInt(params.GWei))
+					if err := core.ProcessBaseInflation(evm, thirdWithdrawal.Address, amount); err != nil {
+						log.Error("could not process base inflation", "err", err)
 					}
 				}
 			}

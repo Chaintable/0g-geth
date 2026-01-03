@@ -248,8 +248,8 @@ var (
 		Usage:    "Manually specify the Verkle fork timestamp, overriding the bundled setting",
 		Category: flags.EthCategory,
 	}
-	OverrideDelegationActivation = &cli.Uint64Flag{
-		Name:     "override.delegationActivation",
+	OverrideStakingActivation = &cli.Uint64Flag{
+		Name:     "override.stakingActivation",
 		Usage:    "Manually specify the Delegation Activation timestamp, overriding the bundled setting",
 		Category: flags.EthCategory,
 	}
