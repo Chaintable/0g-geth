@@ -70,7 +70,7 @@ var Defaults = Config{
 	GPO:                FullNodeGPO,
 	RPCTxFeeCap:        1, // 1 ether
 	OverrideStakingActivation: func() *uint64 {
-		var i uint64 = 1_749_902_400 // 2025-06-14 12:00:00 UTC
+		var i uint64 = 1_769_558_400 // 2026-01-28 0:00:00 UTC
 		return &i
 	}(),
 	OverrideRestakingActivation: func() *uint64 {
