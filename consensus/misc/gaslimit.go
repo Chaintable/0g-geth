@@ -24,7 +24,7 @@ import (
 
 // VerifyGaslimit verifies the header gas limit according increase/decrease
 // in relation to the parent gas limit.
-func VerifyGaslimit(parentGasLimit, headerGasLimit uint64) error {
+func VerifyGaslimit(parentGasLimit, headerGasLimit, timestamp, chainID uint64) error {
 	// Verify that the gas limit remains within allowed bounds
 	diff := int64(parentGasLimit) - int64(headerGasLimit)
 	if diff < 0 {
@@ -34,8 +34,9 @@ func VerifyGaslimit(parentGasLimit, headerGasLimit uint64) error {
 	if uint64(diff) >= limit {
 		return fmt.Errorf("invalid gas limit: have %d, want %d +-= %d", headerGasLimit, parentGasLimit, limit-1)
 	}
-	if headerGasLimit < params.MinGasLimit {
-		return fmt.Errorf("invalid gas limit below %d", params.MinGasLimit)
+	minGasLimit := params.MinGasLimitAt(timestamp, chainID)
+	if headerGasLimit < minGasLimit {
+		return fmt.Errorf("invalid gas limit below %d", minGasLimit)
 	}
 	return nil
 }
