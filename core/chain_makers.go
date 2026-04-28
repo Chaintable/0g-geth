@@ -244,7 +244,7 @@ func (b *BlockGen) AddUncle(h *types.Header) {
 		h.BaseFee = eip1559.CalcBaseFee(b.cm.config, parent)
 		if !b.cm.config.IsLondon(parent.Number) {
 			parentGasLimit := parent.GasLimit * b.cm.config.ElasticityMultiplier()
-			h.GasLimit = CalcGasLimit(parentGasLimit, parentGasLimit)
+			h.GasLimit = CalcGasLimit(parentGasLimit, parentGasLimit, h.Time, b.cm.config.ChainID.Uint64())
 		}
 	}
 	b.uncles = append(b.uncles, h)
@@ -641,7 +641,7 @@ func (cm *chainMaker) makeHeader(parent *types.Block, state *state.StateDB, engi
 		header.BaseFee = eip1559.CalcBaseFee(cm.config, parentHeader)
 		if !cm.config.IsLondon(parent.Number()) {
 			parentGasLimit := parent.GasLimit() * cm.config.ElasticityMultiplier()
-			header.GasLimit = CalcGasLimit(parentGasLimit, parentGasLimit)
+			header.GasLimit = CalcGasLimit(parentGasLimit, parentGasLimit, header.Time, cm.config.ChainID.Uint64())
 		}
 	}
 	if cm.config.IsCancun(header.Number, header.Time) {

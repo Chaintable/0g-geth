@@ -241,6 +241,8 @@ func testHeaderVerificationForMerging(t *testing.T, isClique bool) {
 }
 
 func TestCalcGasLimit(t *testing.T) {
+	// Non-ZG chains use a far-future fork time and stay on the legacy 5000 min floor — same clamp as Ethereum.
+	var ethMainnetChainID uint64 = 1
 	for i, tc := range []struct {
 		pGasLimit uint64
 		max       uint64
@@ -250,24 +252,34 @@ func TestCalcGasLimit(t *testing.T) {
 		{40000000, 40039061, 39960939},
 	} {
 		// Increase
-		if have, want := CalcGasLimit(tc.pGasLimit, 2*tc.pGasLimit), tc.max; have != want {
+		if have, want := CalcGasLimit(tc.pGasLimit, 2*tc.pGasLimit, 0, ethMainnetChainID), tc.max; have != want {
 			t.Errorf("test %d: have %d want <%d", i, have, want)
 		}
 		// Decrease
-		if have, want := CalcGasLimit(tc.pGasLimit, 0), tc.min; have != want {
+		if have, want := CalcGasLimit(tc.pGasLimit, 0, 0, ethMainnetChainID), tc.min; have != want {
 			t.Errorf("test %d: have %d want >%d", i, have, want)
 		}
 		// Small decrease
-		if have, want := CalcGasLimit(tc.pGasLimit, tc.pGasLimit-1), tc.pGasLimit-1; have != want {
+		if have, want := CalcGasLimit(tc.pGasLimit, tc.pGasLimit-1, 0, ethMainnetChainID), tc.pGasLimit-1; have != want {
 			t.Errorf("test %d: have %d want %d", i, have, want)
 		}
 		// Small increase
-		if have, want := CalcGasLimit(tc.pGasLimit, tc.pGasLimit+1), tc.pGasLimit+1; have != want {
+		if have, want := CalcGasLimit(tc.pGasLimit, tc.pGasLimit+1, 0, ethMainnetChainID), tc.pGasLimit+1; have != want {
 			t.Errorf("test %d: have %d want %d", i, have, want)
 		}
 		// No change
-		if have, want := CalcGasLimit(tc.pGasLimit, tc.pGasLimit), tc.pGasLimit; have != want {
+		if have, want := CalcGasLimit(tc.pGasLimit, tc.pGasLimit, 0, ethMainnetChainID), tc.pGasLimit; have != want {
 			t.Errorf("test %d: have %d want %d", i, have, want)
 		}
+	}
+}
+
+func TestCalcGasLimitMinHardfork(t *testing.T) {
+	parentGasLimit := uint64(20_000_000)
+	// Devnet fork timestamp is 0: post-fork minimum applies for any header time.
+	got := CalcGasLimit(parentGasLimit, 0, 1, params.ZGDevnetChainID)
+	want := parentGasLimit - (parentGasLimit/params.GasLimitBoundDivisor - 1)
+	if got != want {
+		t.Fatalf("unexpected gas limit change at hardfork: have %d want %d", got, want)
 	}
 }

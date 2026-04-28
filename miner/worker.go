@@ -228,7 +228,7 @@ func (miner *Miner) prepareWork(genParams *generateParams, witness bool) (*envir
 	header := &types.Header{
 		ParentHash: parent.Hash(),
 		Number:     new(big.Int).Add(parent.Number, common.Big1),
-		GasLimit:   core.CalcGasLimit(parent.GasLimit, miner.config.GasCeil),
+		GasLimit:   core.CalcGasLimit(parent.GasLimit, miner.config.GasCeil, timestamp, miner.chainConfig.ChainID.Uint64()),
 		Time:       timestamp,
 		Coinbase:   genParams.coinbase,
 	}
@@ -245,7 +245,7 @@ func (miner *Miner) prepareWork(genParams *generateParams, witness bool) (*envir
 		header.BaseFee = eip1559.CalcBaseFee(miner.chainConfig, parent)
 		if !miner.chainConfig.IsLondon(parent.Number) {
 			parentGasLimit := parent.GasLimit * miner.chainConfig.ElasticityMultiplier()
-			header.GasLimit = core.CalcGasLimit(parentGasLimit, miner.config.GasCeil)
+			header.GasLimit = core.CalcGasLimit(parentGasLimit, miner.config.GasCeil, timestamp, miner.chainConfig.ChainID.Uint64())
 		}
 	}
 	// Run the consensus preparation with the default or customized consensus engine.

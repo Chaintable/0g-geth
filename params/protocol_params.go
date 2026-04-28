@@ -23,10 +23,17 @@ import (
 )
 
 const (
-	GasLimitBoundDivisor uint64 = 1024               // The bound divisor of the gas limit, used in update calculations.
-	MinGasLimit          uint64 = 5000               // Minimum the gas limit may ever be.
-	MaxGasLimit          uint64 = 0x7fffffffffffffff // Maximum the gas limit (2^63-1).
-	GenesisGasLimit      uint64 = 4712388            // Gas limit of the Genesis block.
+	ZGDevnetChainID                 uint64 = 16601              // The chain ID for the 0G Chain devnet.
+	ZGTestnetChainID                uint64 = 16602              // The chain ID for the 0G Chain testnet.
+	ZGMainnetChainID                uint64 = 16661              // The chain ID for the 0G Chain mainnet.
+	GasLimitBoundDivisor            uint64 = 1024               // The bound divisor of the gas limit, used in update calculations.
+	MinGasLimit                     uint64 = 5000               // Minimum the gas limit may ever be.
+	MinGasLimitPostFork             uint64 = 3000000            // Minimum gas limit after the min-gas-limit hardfork.
+	MinGasLimitForkTimestampDevnet  uint64 = 0                  // Activation timestamp for the min-gas-limit hardfork on devnet.
+	MinGasLimitForkTimestampTestnet uint64 = 1_777_852_800      // Activation timestamp for the min-gas-limit hardfork on testnet.
+	MinGasLimitForkTimestampMainnet uint64 = 1_778_716_800      // Activation timestamp for the min-gas-limit hardfork on mainnet.
+	MaxGasLimit                     uint64 = 0x7fffffffffffffff // Maximum the gas limit (2^63-1).
+	GenesisGasLimit                 uint64 = 4712388            // Gas limit of the Genesis block.
 
 	MaximumExtraDataSize  uint64 = 32    // Maximum size extra data may be after Genesis.
 	ExpByteGas            uint64 = 10    // Times ceil(log256(exponent)) for the EXP instruction.
@@ -176,6 +183,29 @@ const (
 
 	HistoryServeWindow = 8192 // Number of blocks to serve historical block hashes for, EIP-2935.
 )
+
+// MinGasLimitForkTimestamp returns the activation unix time after which the higher block gas-limit floor applies.
+// 0g devnet/testnet/mainnet use fixed schedules; unknown chain IDs conservatively assume the fork is never activated.
+func MinGasLimitForkTimestamp(chainID uint64) uint64 {
+	switch chainID {
+	case ZGDevnetChainID:
+		return MinGasLimitForkTimestampDevnet
+	case ZGTestnetChainID:
+		return MinGasLimitForkTimestampTestnet
+	case ZGMainnetChainID:
+		return MinGasLimitForkTimestampMainnet
+	default:
+		return uint64(0)
+	}
+}
+
+// MinGasLimitAt returns the effective minimum gas limit at a given block timestamp and chain.
+func MinGasLimitAt(timestamp, chainID uint64) uint64 {
+	if timestamp >= MinGasLimitForkTimestamp(chainID) {
+		return MinGasLimitPostFork
+	}
+	return MinGasLimit
+}
 
 // Bls12381G1MultiExpDiscountTable is the gas discount table for BLS12-381 G1 multi exponentiation operation
 var Bls12381G1MultiExpDiscountTable = [128]uint64{1000, 949, 848, 797, 764, 750, 738, 728, 719, 712, 705, 698, 692, 687, 682, 677, 673, 669, 665, 661, 658, 654, 651, 648, 645, 642, 640, 637, 635, 632, 630, 627, 625, 623, 621, 619, 617, 615, 613, 611, 609, 608, 606, 604, 603, 601, 599, 598, 596, 595, 593, 592, 591, 589, 588, 586, 585, 584, 582, 581, 580, 579, 577, 576, 575, 574, 573, 572, 570, 569, 568, 567, 566, 565, 564, 563, 562, 561, 560, 559, 558, 557, 556, 555, 554, 553, 552, 551, 550, 549, 548, 547, 547, 546, 545, 544, 543, 542, 541, 540, 540, 539, 538, 537, 536, 536, 535, 534, 533, 532, 532, 531, 530, 529, 528, 528, 527, 526, 525, 525, 524, 523, 522, 522, 521, 520, 520, 519}
