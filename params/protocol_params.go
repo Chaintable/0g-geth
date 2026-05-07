@@ -28,7 +28,7 @@ const (
 	ZGMainnetChainID                uint64 = 16661              // The chain ID for the 0G Chain mainnet.
 	GasLimitBoundDivisor            uint64 = 1024               // The bound divisor of the gas limit, used in update calculations.
 	MinGasLimit                     uint64 = 5000               // Minimum the gas limit may ever be.
-	MinGasLimitPostFork             uint64 = 3000000            // Minimum gas limit after the min-gas-limit hardfork.
+	MinGasLimitPostFork             uint64 = 20000000           // Minimum gas limit after the min-gas-limit hardfork.
 	MinGasLimitForkTimestampDevnet  uint64 = 0                  // Activation timestamp for the min-gas-limit hardfork on devnet.
 	MinGasLimitForkTimestampTestnet uint64 = 1_777_852_800      // Activation timestamp for the min-gas-limit hardfork on testnet.
 	MinGasLimitForkTimestampMainnet uint64 = 1_778_716_800      // Activation timestamp for the min-gas-limit hardfork on mainnet.
