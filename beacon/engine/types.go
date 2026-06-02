@@ -38,6 +38,12 @@ var (
 	PayloadV3 PayloadVersion = 0x3
 )
 
+// SlashedValidatorEntry describes a slashed validator reported by the consensus layer.
+type SlashedValidatorEntry struct {
+	ValidatorIndex uint64 `json:"validator_index,string"`
+	PenaltyGwei    uint64 `json:"penalty_gwei,string"`
+}
+
 //go:generate go run github.com/fjl/gencodec -type PayloadAttributes -field-override payloadAttributesMarshaling -out gen_blockparams.go
 
 // PayloadAttributes describes the environment context in which a block should
@@ -77,6 +83,7 @@ type ExecutableData struct {
 	BlobGasUsed      *uint64                 `json:"blobGasUsed"`
 	ExcessBlobGas    *uint64                 `json:"excessBlobGas"`
 	ExecutionWitness *types.ExecutionWitness `json:"executionWitness,omitempty"`
+	Slashed          []SlashedValidatorEntry `json:"slashed,omitempty"`
 }
 
 // JSON type overrides for executableData.
@@ -203,6 +210,14 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 	return txs, nil
 }
 
+// ValidateExecutableDataForkFields checks fork-gated ExecutableData extensions.
+func ValidateExecutableDataForkFields(chainID uint64, data ExecutableData) error {
+	if len(data.Slashed) > 0 && !params.IsSlashedForkActive(chainID, data.Timestamp) {
+		return fmt.Errorf("slashed field not supported before slashed fork (timestamp %d < %d)", data.Timestamp, params.SlashedForkTimestamp(chainID))
+	}
+	return nil
+}
+
 // ExecutableDataToBlock constructs a block from executable data.
 // It verifies that the following fields:
 //
@@ -214,7 +229,10 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 // and that the blockhash of the constructed block matches the parameters. Nil
 // Withdrawals value will propagate through the returned block. Empty
 // Withdrawals value must be passed via non-nil, length 0 value in data.
-func ExecutableDataToBlock(data ExecutableData, versionedHashes []common.Hash, beaconRoot *common.Hash, requests [][]byte) (*types.Block, error) {
+func ExecutableDataToBlock(data ExecutableData, versionedHashes []common.Hash, beaconRoot *common.Hash, requests [][]byte, chainID uint64) (*types.Block, error) {
+	if err := ValidateExecutableDataForkFields(chainID, data); err != nil {
+		return nil, err
+	}
 	block, err := ExecutableDataToBlockNoHash(data, versionedHashes, beaconRoot, requests)
 	if err != nil {
 		return nil, err

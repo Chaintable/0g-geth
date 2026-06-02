@@ -18,6 +18,7 @@
 package catalyst
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -836,8 +837,19 @@ func (api *ConsensusAPI) newPayload(params engine.ExecutableData, versionedHashe
 	api.newPayloadLock.Lock()
 	defer api.newPayloadLock.Unlock()
 
-	log.Info("Engine API request received", "method", "NewPayload", "number", params.Number, "hash", params.BlockHash)
-	block, err := engine.ExecutableDataToBlock(params, versionedHashes, beaconRoot, requests)
+	var slashed string
+	if params.Slashed != nil {
+		slashedData, err := json.Marshal(params.Slashed)
+		if err != nil {
+			log.Error("Failed to marshal slashed", "error", err)
+		}
+		slashed = string(slashedData)
+	} else {
+		slashed = "nil"
+	}
+	log.Info("Engine API request received", "method", "NewPayload", "number", params.Number, "hash", params.BlockHash, "slashed", slashed)
+	chainID := api.eth.BlockChain().Config().ChainID.Uint64()
+	block, err := engine.ExecutableDataToBlock(params, versionedHashes, beaconRoot, requests, chainID)
 	if err != nil {
 		bgu := "nil"
 		if params.BlobGasUsed != nil {
@@ -937,6 +949,10 @@ func (api *ConsensusAPI) newPayload(params engine.ExecutableData, versionedHashe
 
 func (api *ConsensusAPI) executeStatelessPayload(params engine.ExecutableData, versionedHashes []common.Hash, beaconRoot *common.Hash, requests [][]byte, opaqueWitness hexutil.Bytes) (engine.StatelessPayloadStatusV1, error) {
 	log.Trace("Engine API request received", "method", "ExecuteStatelessPayload", "number", params.Number, "hash", params.BlockHash)
+	chainID := api.eth.BlockChain().Config().ChainID.Uint64()
+	if err := engine.ValidateExecutableDataForkFields(chainID, params); err != nil {
+		return engine.StatelessPayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(err)
+	}
 	block, err := engine.ExecutableDataToBlockNoHash(params, versionedHashes, beaconRoot, requests)
 	if err != nil {
 		bgu := "nil"
