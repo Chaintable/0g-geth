@@ -39,9 +39,15 @@ var (
 )
 
 // SlashedValidatorEntry describes a slashed validator reported by the consensus layer.
-type SlashedValidatorEntry struct {
-	ValidatorIndex uint64 `json:"validator_index,string"`
-	PenaltyGwei    uint64 `json:"penalty_gwei,string"`
+// It reuses types.Withdrawal: Validator is the validator index, Amount is the penalty in gwei.
+type SlashedValidatorEntry types.Withdrawal
+
+func (s SlashedValidatorEntry) MarshalJSON() ([]byte, error) {
+	return types.Withdrawal(s).MarshalJSON()
+}
+
+func (s *SlashedValidatorEntry) UnmarshalJSON(input []byte) error {
+	return (*types.Withdrawal)(s).UnmarshalJSON(input)
 }
 
 //go:generate go run github.com/fjl/gencodec -type PayloadAttributes -field-override payloadAttributesMarshaling -out gen_blockparams.go

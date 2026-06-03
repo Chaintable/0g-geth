@@ -837,17 +837,15 @@ func (api *ConsensusAPI) newPayload(params engine.ExecutableData, versionedHashe
 	api.newPayloadLock.Lock()
 	defer api.newPayloadLock.Unlock()
 
-	var slashed string
-	if params.Slashed != nil {
+	log.Info("Engine API request received", "method", "NewPayload", "number", params.Number, "hash", params.BlockHash)
+	if len(params.Slashed) > 0 {
 		slashedData, err := json.Marshal(params.Slashed)
 		if err != nil {
-			log.Error("Failed to marshal slashed", "error", err)
+			log.Error("[Debug] Failed to marshal slashed", "error", err)
 		}
-		slashed = string(slashedData)
-	} else {
-		slashed = "nil"
+		log.Info("[Debug] Slased is not nil", "slashed", string(slashedData))
 	}
-	log.Info("Engine API request received", "method", "NewPayload", "number", params.Number, "hash", params.BlockHash, "slashed", slashed)
+
 	chainID := api.eth.BlockChain().Config().ChainID.Uint64()
 	block, err := engine.ExecutableDataToBlock(params, versionedHashes, beaconRoot, requests, chainID)
 	if err != nil {
@@ -876,6 +874,7 @@ func (api *ConsensusAPI) newPayload(params engine.ExecutableData, versionedHashe
 			"params.ExcessBlobGas", ebg,
 			"len(params.Transactions)", len(params.Transactions),
 			"len(params.Withdrawals)", len(params.Withdrawals),
+			"len(params.Slashed)", len(params.Slashed),
 			"beaconRoot", beaconRoot,
 			"len(requests)", len(requests),
 			"error", err)
