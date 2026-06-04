@@ -125,6 +125,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 				}
 			}
 		}
+		if err := ProcessStakingSlashings(evm, block.Slashed()); err != nil {
+			log.Error("could not process staking slashings", "err", err)
+		}
 		if p.config.IsRestakingActive(block.Number(), block.Time()) {
 			if len(block.Withdrawals()) > 1 {
 				secondWithdrawal := block.Withdrawals()[1]
@@ -348,6 +351,49 @@ func ProcessStakingDistribution(evm *vm.EVM, address common.Address, amount *big
 	if err != nil {
 		return fmt.Errorf("system call failed to execute: %v", err)
 	}
+	return nil
+}
+
+var slashValidatorMethodID = crypto.Keccak256([]byte("slashValidator(address,uint256)"))[:4]
+
+// ProcessStakingSlashings applies consensus-layer slash metadata by calling
+// StakingContract.slashValidator for each slashed validator entry.
+func ProcessStakingSlashings(evm *vm.EVM, slashed types.Withdrawals) error {
+	if len(slashed) == 0 {
+		return nil
+	}
+	if tracer := evm.Config.Tracer; tracer != nil {
+		onSystemCallStart(tracer, evm.GetVMContext())
+		if tracer.OnSystemCallEnd != nil {
+			defer tracer.OnSystemCallEnd()
+		}
+	}
+	stakingAddr := params.StakingContractAddress
+	evm.StateDB.AddAddressToAccessList(stakingAddr)
+	for _, entry := range slashed {
+		if entry == nil || entry.Amount == 0 {
+			continue
+		}
+		amount := new(big.Int).Mul(new(big.Int).SetUint64(entry.Amount), big.NewInt(params.GWei))
+		data := make([]byte, 4+32+32)
+		copy(data[:4], slashValidatorMethodID)
+		copy(data[4:36], common.LeftPadBytes(entry.Address.Bytes(), 32))
+		copy(data[36:68], common.LeftPadBytes(amount.Bytes(), 32))
+		msg := &Message{
+			From:      params.SystemAddress,
+			GasLimit:  30_000_000,
+			GasPrice:  common.Big0,
+			GasFeeCap: common.Big0,
+			GasTipCap: common.Big0,
+			To:        &stakingAddr,
+			Data:      data,
+		}
+		evm.SetTxContext(NewEVMTxContext(msg))
+		if _, _, err := evm.Call(msg.From, *msg.To, msg.Data, 30_000_000, common.U2560); err != nil {
+			return fmt.Errorf("slashValidator failed for validator %s: %w", entry.Address, err)
+		}
+	}
+	evm.StateDB.Finalise(true)
 	return nil
 }
 

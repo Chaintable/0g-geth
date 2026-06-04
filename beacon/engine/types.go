@@ -316,8 +316,21 @@ func ExecutableDataToBlockNoHash(data ExecutableData, versionedHashes []common.H
 		ParentBeaconRoot: beaconRoot,
 		RequestsHash:     requestsHash,
 	}
+	var slashed types.Withdrawals
+	if data.Slashed != nil {
+		slashed = make(types.Withdrawals, len(data.Slashed))
+		for i, entry := range data.Slashed {
+			w := types.Withdrawal(entry)
+			slashed[i] = &w
+		}
+	}
 	return types.NewBlockWithHeader(header).
-			WithBody(types.Body{Transactions: txs, Uncles: nil, Withdrawals: data.Withdrawals}).
+			WithBody(types.Body{
+				Transactions: txs,
+				Uncles:       nil,
+				Withdrawals:  data.Withdrawals,
+				Slashed:      slashed,
+			}).
 			WithWitness(data.ExecutionWitness),
 		nil
 }
@@ -344,6 +357,14 @@ func BlockToExecutableData(block *types.Block, fees *big.Int, sidecars []*types.
 		BlobGasUsed:      block.BlobGasUsed(),
 		ExcessBlobGas:    block.ExcessBlobGas(),
 		ExecutionWitness: block.ExecutionWitness(),
+	}
+	if slashed := block.Slashed(); len(slashed) > 0 {
+		data.Slashed = make([]SlashedValidatorEntry, len(slashed))
+		for i, entry := range slashed {
+			if entry != nil {
+				data.Slashed[i] = SlashedValidatorEntry(*entry)
+			}
+		}
 	}
 
 	// Add blobs.

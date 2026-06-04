@@ -377,6 +377,9 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig, 
 				}
 			}
 		}
+		if err := core.ProcessStakingSlashings(evm, nil); err != nil {
+			log.Error("could not process staking slashings", "err", err)
+		}
 		if chainConfig.IsRestakingActive(vmContext.BlockNumber, vmContext.Time) {
 			if len(pre.Env.Withdrawals) > 1 {
 				secondWithdrawal := pre.Env.Withdrawals[1]

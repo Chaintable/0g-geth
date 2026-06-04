@@ -344,6 +344,9 @@ func (sim *simulator) processBlock(ctx context.Context, block *simBlock, header,
 				}
 			}
 		}
+		if err := core.ProcessStakingSlashings(evm, nil); err != nil {
+			log.Error("could not process staking slashings", "err", err)
+		}
 		if sim.chainConfig.IsRestakingActive(header.Number, header.Time) {
 			if block.BlockOverrides.Withdrawals != nil && len(*block.BlockOverrides.Withdrawals) > 1 {
 				secondWithdrawal := (*block.BlockOverrides.Withdrawals)[1]
