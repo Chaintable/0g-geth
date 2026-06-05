@@ -3137,6 +3137,28 @@ func TestRPCMarshalBlock(t *testing.T) {
 	}
 }
 
+func TestRPCMarshalBlockSlashed(t *testing.T) {
+	t.Parallel()
+	addr := common.BytesToAddress([]byte{0xaa})
+	block := types.NewBlockWithHeader(&types.Header{Number: big.NewInt(1)}).WithBody(types.Body{
+		Slashed: []*types.Withdrawal{{
+			Index: 0, Validator: 7, Address: addr, Amount: 100,
+		}},
+	})
+	resp := RPCMarshalBlock(block, false, false, params.MainnetChainConfig)
+	slashed, ok := resp["slashed"].(types.Withdrawals)
+	if !ok || len(slashed) != 1 || slashed[0].Validator != 7 {
+		t.Fatalf("unexpected slashed field: %#v", resp["slashed"])
+	}
+	out, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(out), `"slashed"`) || !strings.Contains(string(out), `"validatorIndex":"0x7"`) {
+		t.Fatalf("json missing slashed: %s", out)
+	}
+}
+
 func TestRPCGetBlockOrHeader(t *testing.T) {
 	t.Parallel()
 

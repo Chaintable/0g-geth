@@ -938,6 +938,9 @@ func RPCMarshalBlock(block *types.Block, inclTx bool, fullTx bool, config *param
 	if block.Withdrawals() != nil {
 		fields["withdrawals"] = block.Withdrawals()
 	}
+	if slashed := block.Slashed(); len(slashed) > 0 {
+		fields["slashed"] = slashed
+	}
 	return fields
 }
 
