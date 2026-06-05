@@ -216,14 +216,6 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 	return txs, nil
 }
 
-// ValidateExecutableDataForkFields checks fork-gated ExecutableData extensions.
-func ValidateExecutableDataForkFields(chainID uint64, data ExecutableData) error {
-	if len(data.Slashed) > 0 && !params.IsSlashedForkActive(chainID, data.Timestamp) {
-		return fmt.Errorf("slashed field not supported before slashed fork (timestamp %d < %d)", data.Timestamp, params.SlashedForkTimestamp(chainID))
-	}
-	return nil
-}
-
 // ExecutableDataToBlock constructs a block from executable data.
 // It verifies that the following fields:
 //
@@ -235,10 +227,7 @@ func ValidateExecutableDataForkFields(chainID uint64, data ExecutableData) error
 // and that the blockhash of the constructed block matches the parameters. Nil
 // Withdrawals value will propagate through the returned block. Empty
 // Withdrawals value must be passed via non-nil, length 0 value in data.
-func ExecutableDataToBlock(data ExecutableData, versionedHashes []common.Hash, beaconRoot *common.Hash, requests [][]byte, chainID uint64) (*types.Block, error) {
-	if err := ValidateExecutableDataForkFields(chainID, data); err != nil {
-		return nil, err
-	}
+func ExecutableDataToBlock(data ExecutableData, versionedHashes []common.Hash, beaconRoot *common.Hash, requests [][]byte) (*types.Block, error) {
 	block, err := ExecutableDataToBlockNoHash(data, versionedHashes, beaconRoot, requests)
 	if err != nil {
 		return nil, err

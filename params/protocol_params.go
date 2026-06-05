@@ -33,11 +33,8 @@ const (
 	MinGasLimitForkTimestampTestnet uint64 = 1_777_852_800 // Activation timestamp for the min-gas-limit hardfork on testnet.
 	MinGasLimitForkTimestampMainnet uint64 = 1_778_716_800 // Activation timestamp for the min-gas-limit hardfork on mainnet.
 
-	SlashedForkTimestampDevnet  uint64 = 0                  // Activation timestamp for ExecutableData.slashed on devnet.
-	SlashedForkTimestampTestnet uint64 = 0                  // Activation timestamp for ExecutableData.slashed on testnet.
-	SlashedForkTimestampMainnet uint64 = 0                  // Activation timestamp for ExecutableData.slashed on mainnet.
-	MaxGasLimit                 uint64 = 0x7fffffffffffffff // Maximum the gas limit (2^63-1).
-	GenesisGasLimit             uint64 = 4712388            // Gas limit of the Genesis block.
+	MaxGasLimit     uint64 = 0x7fffffffffffffff // Maximum the gas limit (2^63-1).
+	GenesisGasLimit uint64 = 4712388            // Gas limit of the Genesis block.
 
 	MaximumExtraDataSize  uint64 = 32    // Maximum size extra data may be after Genesis.
 	ExpByteGas            uint64 = 10    // Times ceil(log256(exponent)) for the EXP instruction.
@@ -209,25 +206,6 @@ func MinGasLimitAt(timestamp, chainID uint64) uint64 {
 		return MinGasLimitPostFork
 	}
 	return MinGasLimit
-}
-
-// SlashedForkTimestamp returns the activation unix time after which ExecutableData may carry slashed entries.
-func SlashedForkTimestamp(chainID uint64) uint64 {
-	switch chainID {
-	case ZGDevnetChainID:
-		return SlashedForkTimestampDevnet
-	case ZGTestnetChainID:
-		return SlashedForkTimestampTestnet
-	case ZGMainnetChainID:
-		return SlashedForkTimestampMainnet
-	default:
-		return ^uint64(0)
-	}
-}
-
-// IsSlashedForkActive reports whether the slashed payload extension is enabled at the given time.
-func IsSlashedForkActive(chainID, timestamp uint64) bool {
-	return timestamp >= SlashedForkTimestamp(chainID)
 }
 
 // Bls12381G1MultiExpDiscountTable is the gas discount table for BLS12-381 G1 multi exponentiation operation
