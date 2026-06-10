@@ -142,6 +142,9 @@ func (miner *Miner) generateWork(params *generateParams, witness bool) *newPaylo
 				}
 			}
 		}
+		if err := core.ProcessStakingSlashings(work.evm, nil); err != nil {
+			log.Error("could not process staking slashings", "err", err)
+		}
 		if miner.chainConfig.IsRestakingActive(work.header.Number, work.header.Time) {
 			if len(params.withdrawals) > 1 {
 				secondWithdrawal := params.withdrawals[1]

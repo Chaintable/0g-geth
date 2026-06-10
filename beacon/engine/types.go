@@ -38,6 +38,18 @@ var (
 	PayloadV3 PayloadVersion = 0x3
 )
 
+// SlashedValidatorEntry describes a slashed validator reported by the consensus layer.
+// It reuses types.Withdrawal: Validator is the validator index, Amount is the penalty in gwei.
+type SlashedValidatorEntry types.Withdrawal
+
+func (s SlashedValidatorEntry) MarshalJSON() ([]byte, error) {
+	return types.Withdrawal(s).MarshalJSON()
+}
+
+func (s *SlashedValidatorEntry) UnmarshalJSON(input []byte) error {
+	return (*types.Withdrawal)(s).UnmarshalJSON(input)
+}
+
 //go:generate go run github.com/fjl/gencodec -type PayloadAttributes -field-override payloadAttributesMarshaling -out gen_blockparams.go
 
 // PayloadAttributes describes the environment context in which a block should
@@ -77,6 +89,7 @@ type ExecutableData struct {
 	BlobGasUsed      *uint64                 `json:"blobGasUsed"`
 	ExcessBlobGas    *uint64                 `json:"excessBlobGas"`
 	ExecutionWitness *types.ExecutionWitness `json:"executionWitness,omitempty"`
+	Slashed          []SlashedValidatorEntry `json:"slashed,omitempty"`
 }
 
 // JSON type overrides for executableData.
@@ -292,8 +305,21 @@ func ExecutableDataToBlockNoHash(data ExecutableData, versionedHashes []common.H
 		ParentBeaconRoot: beaconRoot,
 		RequestsHash:     requestsHash,
 	}
+	var slashed types.Withdrawals
+	if data.Slashed != nil {
+		slashed = make(types.Withdrawals, len(data.Slashed))
+		for i, entry := range data.Slashed {
+			w := types.Withdrawal(entry)
+			slashed[i] = &w
+		}
+	}
 	return types.NewBlockWithHeader(header).
-			WithBody(types.Body{Transactions: txs, Uncles: nil, Withdrawals: data.Withdrawals}).
+			WithBody(types.Body{
+				Transactions: txs,
+				Uncles:       nil,
+				Withdrawals:  data.Withdrawals,
+				Slashed:      slashed,
+			}).
 			WithWitness(data.ExecutionWitness),
 		nil
 }
@@ -320,6 +346,14 @@ func BlockToExecutableData(block *types.Block, fees *big.Int, sidecars []*types.
 		BlobGasUsed:      block.BlobGasUsed(),
 		ExcessBlobGas:    block.ExcessBlobGas(),
 		ExecutionWitness: block.ExecutionWitness(),
+	}
+	if slashed := block.Slashed(); len(slashed) > 0 {
+		data.Slashed = make([]SlashedValidatorEntry, len(slashed))
+		for i, entry := range slashed {
+			if entry != nil {
+				data.Slashed[i] = SlashedValidatorEntry(*entry)
+			}
+		}
 	}
 
 	// Add blobs.

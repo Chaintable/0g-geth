@@ -234,6 +234,9 @@ func (dlp *downloadTesterPeer) RequestBodies(hashes []common.Hash, sink chan *et
 		}
 		txsHashes[i] = hash
 		uncleHashes[i] = types.CalcUncleHash(body.Uncles)
+		if body.Withdrawals != nil {
+			withdrawalHashes[i] = types.DeriveSha(types.Withdrawals(body.Withdrawals), hasher)
+		}
 	}
 	req := &eth.Request{
 		Peer: dlp.id,

@@ -318,3 +318,32 @@ func TestRlpDecodeParentHash(t *testing.T) {
 		}
 	}
 }
+
+func TestBodySlashedRLPRoundtrip(t *testing.T) {
+	addr := common.Address{0xab}
+	body := &Body{
+		Slashed: []*Withdrawal{{
+			Index:     1,
+			Validator: 42,
+			Address:   addr,
+			Amount:    1_000_000_000,
+		}},
+	}
+	enc, err := rlp.EncodeToBytes(body)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	var dec Body
+	if err := rlp.DecodeBytes(enc, &dec); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(dec.Slashed) != 1 || dec.Slashed[0].Validator != 42 || dec.Slashed[0].Amount != 1_000_000_000 {
+		t.Fatalf("unexpected decoded body: %+v", dec.Slashed)
+	}
+
+	header := &Header{Number: big.NewInt(1)}
+	block := NewBlockWithHeader(header).WithBody(*body)
+	if len(block.Slashed()) != 1 || block.Slashed()[0].Validator != 42 {
+		t.Fatalf("block slashed not attached: %+v", block.Slashed())
+	}
+}

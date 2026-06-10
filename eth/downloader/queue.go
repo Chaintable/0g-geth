@@ -71,6 +71,7 @@ type fetchResult struct {
 	Transactions types.Transactions
 	Receipts     types.Receipts
 	Withdrawals  types.Withdrawals
+	Slashed      types.Withdrawals
 }
 
 func newFetchResult(header *types.Header, snapSync bool) *fetchResult {
@@ -94,6 +95,7 @@ func (f *fetchResult) body() types.Body {
 		Transactions: f.Transactions,
 		Uncles:       f.Uncles,
 		Withdrawals:  f.Withdrawals,
+		Slashed:      f.Slashed,
 	}
 }
 
@@ -560,6 +562,7 @@ func (q *queue) expire(peer string, pendPool map[string]*fetchRequest, taskQueue
 func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, txListHashes []common.Hash,
 	uncleLists [][]*types.Header, uncleListHashes []common.Hash,
 	withdrawalLists [][]*types.Withdrawal, withdrawalListHashes []common.Hash,
+	slashedLists [][]*types.Withdrawal,
 ) (int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
@@ -622,6 +625,7 @@ func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, txListH
 		result.Transactions = txLists[index]
 		result.Uncles = uncleLists[index]
 		result.Withdrawals = withdrawalLists[index]
+		result.Slashed = slashedLists[index]
 		result.SetBodyDone()
 	}
 	return q.deliver(id, q.blockTaskPool, q.blockTaskQueue, q.blockPendPool,

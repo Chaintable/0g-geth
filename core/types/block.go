@@ -184,6 +184,7 @@ type Body struct {
 	Transactions []*Transaction
 	Uncles       []*Header
 	Withdrawals  []*Withdrawal `rlp:"optional"`
+	Slashed      []*Withdrawal `rlp:"optional"` // consensus slash metadata; not part of the block hash
 }
 
 // Block represents an Ethereum block.
@@ -214,6 +215,10 @@ type Block struct {
 	// that process it.
 	witness *ExecutionWitness
 
+	// slashed carries consensus-layer slash metadata from ExecutableData.
+	// It is not part of the block hash.
+	slashed Withdrawals
+
 	// caches
 	hash atomic.Pointer[common.Hash]
 	size atomic.Uint64
@@ -230,6 +235,7 @@ type extblock struct {
 	Txs         []*Transaction
 	Uncles      []*Header
 	Withdrawals []*Withdrawal `rlp:"optional"`
+	Slashed     []*Withdrawal `rlp:"optional"`
 }
 
 // NewBlock creates a new block. The input data is copied, changes to header and to the
@@ -290,6 +296,10 @@ func NewBlock(header *Header, body *Body, receipts []*Receipt, hasher TrieHasher
 		b.withdrawals = slices.Clone(withdrawals)
 	}
 
+	if body.Slashed != nil {
+		b.slashed = slices.Clone(body.Slashed)
+	}
+
 	return b
 }
 
@@ -340,6 +350,7 @@ func (b *Block) DecodeRLP(s *rlp.Stream) error {
 		return err
 	}
 	b.header, b.uncles, b.transactions, b.withdrawals = eb.Header, eb.Uncles, eb.Txs, eb.Withdrawals
+	b.slashed = eb.Slashed
 	b.size.Store(rlp.ListSize(size))
 	return nil
 }
@@ -351,13 +362,19 @@ func (b *Block) EncodeRLP(w io.Writer) error {
 		Txs:         b.transactions,
 		Uncles:      b.uncles,
 		Withdrawals: b.withdrawals,
+		Slashed:     b.slashed,
 	})
 }
 
 // Body returns the non-header content of the block.
 // Note the returned data is not an independent copy.
 func (b *Block) Body() *Body {
-	return &Body{b.transactions, b.uncles, b.withdrawals}
+	return &Body{
+		Transactions: b.transactions,
+		Uncles:       b.uncles,
+		Withdrawals:  b.withdrawals,
+		Slashed:      b.slashed,
+	}
 }
 
 // Accessors for body data. These do not return a copy because the content
@@ -366,6 +383,7 @@ func (b *Block) Body() *Body {
 func (b *Block) Uncles() []*Header          { return b.uncles }
 func (b *Block) Transactions() Transactions { return b.transactions }
 func (b *Block) Withdrawals() Withdrawals   { return b.withdrawals }
+func (b *Block) Slashed() Withdrawals       { return b.slashed }
 
 func (b *Block) Transaction(hash common.Hash) *Transaction {
 	for _, transaction := range b.transactions {
@@ -495,6 +513,7 @@ func (b *Block) WithSeal(header *Header) *Block {
 		uncles:       b.uncles,
 		withdrawals:  b.withdrawals,
 		witness:      b.witness,
+		slashed:      b.slashed,
 	}
 }
 
@@ -507,6 +526,7 @@ func (b *Block) WithBody(body Body) *Block {
 		uncles:       make([]*Header, len(body.Uncles)),
 		withdrawals:  slices.Clone(body.Withdrawals),
 		witness:      b.witness,
+		slashed:      slices.Clone(body.Slashed),
 	}
 	for i := range body.Uncles {
 		block.uncles[i] = CopyHeader(body.Uncles[i])
@@ -521,6 +541,19 @@ func (b *Block) WithWitness(witness *ExecutionWitness) *Block {
 		uncles:       b.uncles,
 		withdrawals:  b.withdrawals,
 		witness:      witness,
+		slashed:      b.slashed,
+	}
+}
+
+// WithSlashed returns a new block carrying consensus slash metadata.
+func (b *Block) WithSlashed(slashed Withdrawals) *Block {
+	return &Block{
+		header:       b.header,
+		transactions: b.transactions,
+		uncles:       b.uncles,
+		withdrawals:  b.withdrawals,
+		witness:      b.witness,
+		slashed:      slices.Clone(slashed),
 	}
 }
 

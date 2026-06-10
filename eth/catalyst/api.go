@@ -837,6 +837,7 @@ func (api *ConsensusAPI) newPayload(params engine.ExecutableData, versionedHashe
 	defer api.newPayloadLock.Unlock()
 
 	log.Info("Engine API request received", "method", "NewPayload", "number", params.Number, "hash", params.BlockHash)
+
 	block, err := engine.ExecutableDataToBlock(params, versionedHashes, beaconRoot, requests)
 	if err != nil {
 		bgu := "nil"
@@ -864,6 +865,7 @@ func (api *ConsensusAPI) newPayload(params engine.ExecutableData, versionedHashe
 			"params.ExcessBlobGas", ebg,
 			"len(params.Transactions)", len(params.Transactions),
 			"len(params.Withdrawals)", len(params.Withdrawals),
+			"len(params.Slashed)", len(params.Slashed),
 			"beaconRoot", beaconRoot,
 			"len(requests)", len(requests),
 			"error", err)

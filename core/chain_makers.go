@@ -339,6 +339,9 @@ func (b *BlockGen) collectRequests(readonly bool) (requests [][]byte) {
 				}
 			}
 		}
+		if err := ProcessStakingSlashings(evm, nil); err != nil {
+			log.Error("could not process staking slashings", "err", err)
+		}
 		if b.cm.config.IsRestakingActive(b.header.Number, b.header.Time) {
 			if len(b.withdrawals) > 1 {
 				secondWithdrawal := b.withdrawals[1]
