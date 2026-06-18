@@ -31,7 +31,7 @@ const (
 	MinGasLimitPostFork             uint64 = 20000000      // Minimum gas limit after the min-gas-limit hardfork.
 	MinGasLimitForkTimestampDevnet  uint64 = 0             // Activation timestamp for the min-gas-limit hardfork on devnet.
 	MinGasLimitForkTimestampTestnet uint64 = 1_777_852_800 // Activation timestamp for the min-gas-limit hardfork on testnet.
-	MinGasLimitForkTimestampMainnet uint64 = 1_778_716_800 // Activation timestamp for the min-gas-limit hardfork on mainnet.
+	MinGasLimitForkTimestampMainnet uint64 = 1_782_432_000 // Activation timestamp for the min-gas-limit hardfork on mainnet.
 
 	MaxGasLimit     uint64 = 0x7fffffffffffffff // Maximum the gas limit (2^63-1).
 	GenesisGasLimit uint64 = 4712388            // Gas limit of the Genesis block.
