@@ -1,0 +1,31 @@
+# Build Geth in a stock Go builder container
+FROM golang:1.24-alpine AS builder
+
+RUN apk add --no-cache git
+
+ARG GITHUB_TOKEN
+
+RUN git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com".insteadOf "https://github.com"
+
+WORKDIR /go-ethereum
+
+COPY . .
+
+
+RUN go mod download
+
+Run go run build/ci.go install -static ./cmd/geth
+
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y ca-certificates wget libsnappy-dev libjemalloc-dev
+
+
+WORKDIR /app
+
+COPY --from=builder /go-ethereum/build/bin/geth /app
+
+
+EXPOSE 8545 8546 33688 33688/udp
+
+ENTRYPOINT ["/app/geth"]
