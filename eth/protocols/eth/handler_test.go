@@ -450,7 +450,8 @@ func testGetBlockBodies(t *testing.T, protocol uint) {
 					block := backend.chain.GetBlockByNumber(uint64(num))
 					hashes = append(hashes, block.Hash())
 					if len(bodies) < tt.expected {
-						bodies = append(bodies, &BlockBody{Transactions: block.Transactions(), Uncles: block.Uncles(), Withdrawals: block.Withdrawals()})
+						body := block.Body()
+						bodies = append(bodies, &BlockBody{Transactions: body.Transactions, Uncles: body.Uncles, Withdrawals: body.Withdrawals, Slashed: body.Slashed})
 					}
 					break
 				}
@@ -460,7 +461,8 @@ func testGetBlockBodies(t *testing.T, protocol uint) {
 			hashes = append(hashes, hash)
 			if tt.available[j] && len(bodies) < tt.expected {
 				block := backend.chain.GetBlockByHash(hash)
-				bodies = append(bodies, &BlockBody{Transactions: block.Transactions(), Uncles: block.Uncles(), Withdrawals: block.Withdrawals()})
+				body := block.Body()
+				bodies = append(bodies, &BlockBody{Transactions: body.Transactions, Uncles: body.Uncles, Withdrawals: body.Withdrawals, Slashed: body.Slashed})
 			}
 		}
 

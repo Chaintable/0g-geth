@@ -2041,8 +2041,11 @@ func (bc *BlockChain) processBlock(block *types.Block, statedb *state.StateDB, s
 	}
 	vtime := time.Since(vstart)
 
-	// Create a new block with the updated header
+	// Create a new block with the updated header (slash metadata is stored in Body for DB).
 	newBlock := types.NewBlockWithHeader(newHeader).WithBody(*block.Body())
+	if witness := block.ExecutionWitness(); witness != nil {
+		newBlock = newBlock.WithWitness(witness)
+	}
 
 	// If witnesses was generated and stateless self-validation requested, do
 	// that now. Self validation should *never* run in production, it's more of

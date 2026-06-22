@@ -347,11 +347,9 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig, 
 	}
 	// Apply withdrawals
 	for _, w := range pre.Env.Withdrawals {
-		if chainConfig.IsDelegationActive(vmContext.BlockNumber, vmContext.Time) {
-			// will skip both native staking and restaking reward distribution withdrawals
-			if w.Validator == gomath.MaxUint64 {
-				continue
-			}
+		// will skip both native staking and restaking reward distribution withdrawals
+		if w.Validator == gomath.MaxUint64 {
+			continue
 		}
 		// Amount is in gwei, turn into wei
 		amount := new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(params.GWei))
@@ -370,33 +368,35 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig, 
 		if err := core.ParseDepositLogs(&requests, allLogs, chainConfig); err != nil {
 			return nil, nil, nil, NewError(ErrorEVM, fmt.Errorf("could not parse requests logs: %v", err))
 		}
-		if chainConfig.IsDelegationActive(vmContext.BlockNumber, vmContext.Time) {
-			if len(pre.Env.Withdrawals) > 0 {
-				firstWithdrawal := pre.Env.Withdrawals[0]
-				if firstWithdrawal.Validator == gomath.MaxUint64 {
-					amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(params.GWei))
-					if err := core.ProcessStakingDistribution(evm, firstWithdrawal.Address, amount); err != nil {
-						log.Error("could not process staking distribution", "err", err)
+		isStakingActive := chainConfig.IsStakingActive(vmContext.BlockNumber, vmContext.Time)
+		if len(pre.Env.Withdrawals) > 0 {
+			firstWithdrawal := pre.Env.Withdrawals[0]
+			if firstWithdrawal.Validator == gomath.MaxUint64 {
+				amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(params.GWei))
+				if err := core.ProcessStakingDistribution(evm, firstWithdrawal.Address, amount, isStakingActive); err != nil {
+					log.Error("could not process staking distribution", "err", err)
+				}
+			}
+		}
+		if err := core.ProcessStakingSlashings(evm, nil); err != nil {
+			log.Error("could not process staking slashings", "err", err)
+		}
+		if chainConfig.IsRestakingActive(vmContext.BlockNumber, vmContext.Time) {
+			if len(pre.Env.Withdrawals) > 1 {
+				secondWithdrawal := pre.Env.Withdrawals[1]
+				if secondWithdrawal.Validator == gomath.MaxUint64 {
+					amount := new(big.Int).Mul(new(big.Int).SetUint64(secondWithdrawal.Amount), big.NewInt(params.GWei))
+					if err := core.ProcessRestakingDistribution(evm, secondWithdrawal.Address, amount); err != nil {
+						log.Error("could not process restaking distribution", "err", err)
 					}
 				}
 			}
-			if chainConfig.IsRestakingActive(vmContext.BlockNumber, vmContext.Time) {
-				if len(pre.Env.Withdrawals) > 1 {
-					secondWithdrawal := pre.Env.Withdrawals[1]
-					if secondWithdrawal.Validator == gomath.MaxUint64 {
-						amount := new(big.Int).Mul(new(big.Int).SetUint64(secondWithdrawal.Amount), big.NewInt(params.GWei))
-						if err := core.ProcessRestakingDistribution(evm, secondWithdrawal.Address, amount); err != nil {
-							log.Error("could not process restaking distribution", "err", err)
-						}
-					}
-				}
-				if len(pre.Env.Withdrawals) > 2 {
-					thirdWithdrawal := pre.Env.Withdrawals[2]
-					if thirdWithdrawal.Validator == gomath.MaxUint64 {
-						amount := new(big.Int).Mul(new(big.Int).SetUint64(thirdWithdrawal.Amount), big.NewInt(params.GWei))
-						if err := core.ProcessBaseInflation(evm, thirdWithdrawal.Address, amount); err != nil {
-							log.Error("could not process base inflation", "err", err)
-						}
+			if len(pre.Env.Withdrawals) > 2 {
+				thirdWithdrawal := pre.Env.Withdrawals[2]
+				if thirdWithdrawal.Validator == gomath.MaxUint64 {
+					amount := new(big.Int).Mul(new(big.Int).SetUint64(thirdWithdrawal.Amount), big.NewInt(params.GWei))
+					if err := core.ProcessBaseInflation(evm, thirdWithdrawal.Address, amount); err != nil {
+						log.Error("could not process base inflation", "err", err)
 					}
 				}
 			}

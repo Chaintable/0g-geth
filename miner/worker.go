@@ -132,33 +132,35 @@ func (miner *Miner) generateWork(params *generateParams, witness bool) *newPaylo
 		if err := core.ParseDepositLogs(&requests, allLogs, miner.chainConfig); err != nil {
 			return &newPayloadResult{err: err}
 		}
-		if miner.chainConfig.IsDelegationActive(work.header.Number, work.header.Time) {
-			if len(params.withdrawals) > 0 {
-				firstWithdrawal := params.withdrawals[0]
-				if firstWithdrawal.Validator == math.MaxUint64 {
-					amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(ethparams.GWei))
-					if err := core.ProcessStakingDistribution(work.evm, firstWithdrawal.Address, amount); err != nil {
-						log.Error("could not process staking distribution", "err", err)
+		isStakingActive := miner.chainConfig.IsStakingActive(work.header.Number, work.header.Time)
+		if len(params.withdrawals) > 0 {
+			firstWithdrawal := params.withdrawals[0]
+			if firstWithdrawal.Validator == math.MaxUint64 {
+				amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(ethparams.GWei))
+				if err := core.ProcessStakingDistribution(work.evm, firstWithdrawal.Address, amount, isStakingActive); err != nil {
+					log.Error("could not process staking distribution", "err", err)
+				}
+			}
+		}
+		if err := core.ProcessStakingSlashings(work.evm, nil); err != nil {
+			log.Error("could not process staking slashings", "err", err)
+		}
+		if miner.chainConfig.IsRestakingActive(work.header.Number, work.header.Time) {
+			if len(params.withdrawals) > 1 {
+				secondWithdrawal := params.withdrawals[1]
+				if secondWithdrawal.Validator == math.MaxUint64 {
+					amount := new(big.Int).Mul(new(big.Int).SetUint64(secondWithdrawal.Amount), big.NewInt(ethparams.GWei))
+					if err := core.ProcessRestakingDistribution(work.evm, secondWithdrawal.Address, amount); err != nil {
+						log.Error("could not process restaking distribution", "err", err)
 					}
 				}
 			}
-			if miner.chainConfig.IsRestakingActive(work.header.Number, work.header.Time) {
-				if len(params.withdrawals) > 1 {
-					secondWithdrawal := params.withdrawals[1]
-					if secondWithdrawal.Validator == math.MaxUint64 {
-						amount := new(big.Int).Mul(new(big.Int).SetUint64(secondWithdrawal.Amount), big.NewInt(ethparams.GWei))
-						if err := core.ProcessRestakingDistribution(work.evm, secondWithdrawal.Address, amount); err != nil {
-							log.Error("could not process restaking distribution", "err", err)
-						}
-					}
-				}
-				if len(params.withdrawals) > 2 {
-					thirdWithdrawal := params.withdrawals[2]
-					if thirdWithdrawal.Validator == math.MaxUint64 {
-						amount := new(big.Int).Mul(new(big.Int).SetUint64(thirdWithdrawal.Amount), big.NewInt(ethparams.GWei))
-						if err := core.ProcessBaseInflation(work.evm, thirdWithdrawal.Address, amount); err != nil {
-							log.Error("could not process base inflation", "err", err)
-						}
+			if len(params.withdrawals) > 2 {
+				thirdWithdrawal := params.withdrawals[2]
+				if thirdWithdrawal.Validator == math.MaxUint64 {
+					amount := new(big.Int).Mul(new(big.Int).SetUint64(thirdWithdrawal.Amount), big.NewInt(ethparams.GWei))
+					if err := core.ProcessBaseInflation(work.evm, thirdWithdrawal.Address, amount); err != nil {
+						log.Error("could not process base inflation", "err", err)
 					}
 				}
 			}
@@ -229,7 +231,7 @@ func (miner *Miner) prepareWork(genParams *generateParams, witness bool) (*envir
 	header := &types.Header{
 		ParentHash: parent.Hash(),
 		Number:     new(big.Int).Add(parent.Number, common.Big1),
-		GasLimit:   core.CalcGasLimit(parent.GasLimit, miner.config.GasCeil),
+		GasLimit:   core.CalcGasLimit(parent.GasLimit, miner.config.GasCeil, timestamp, miner.chainConfig.ChainID.Uint64()),
 		Time:       timestamp,
 		Coinbase:   genParams.coinbase,
 	}
@@ -246,7 +248,7 @@ func (miner *Miner) prepareWork(genParams *generateParams, witness bool) (*envir
 		header.BaseFee = eip1559.CalcBaseFee(miner.chainConfig, parent)
 		if !miner.chainConfig.IsLondon(parent.Number) {
 			parentGasLimit := parent.GasLimit * miner.chainConfig.ElasticityMultiplier()
-			header.GasLimit = core.CalcGasLimit(parentGasLimit, miner.config.GasCeil)
+			header.GasLimit = core.CalcGasLimit(parentGasLimit, miner.config.GasCeil, timestamp, miner.chainConfig.ChainID.Uint64())
 		}
 	}
 	// Run the consensus preparation with the default or customized consensus engine.
@@ -323,10 +325,16 @@ func (miner *Miner) commitTransaction(env *environment, tx *types.Transaction) e
 
 		// Calculate effective gas price and deduct gas fee from sender's balance
 		var effectiveGasPrice *big.Int
-		if tx.GasFeeCap() != nil {
-			effectiveGasPrice = tx.GasFeeCap()
-		} else {
+		if env.header.BaseFee == nil {
+			// Pre-EIP-1559: use gas price directly
 			effectiveGasPrice = tx.GasPrice()
+		} else {
+			// EIP-1559: calculate baseFee + min(maxFeePerGas - baseFee, maxPriorityFeePerGas)
+			tip := new(big.Int).Sub(tx.GasFeeCap(), env.header.BaseFee)
+			if tip.Cmp(tx.GasTipCap()) > 0 {
+				tip.Set(tx.GasTipCap())
+			}
+			effectiveGasPrice = new(big.Int).Add(tip, env.header.BaseFee)
 		}
 
 		// Calculate total gas fee = gasUsed * effectiveGasPrice

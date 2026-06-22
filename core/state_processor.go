@@ -115,33 +115,35 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		if err := ParseDepositLogs(&requests, allLogs, p.config); err != nil {
 			return nil, err
 		}
-		if p.config.IsDelegationActive(block.Number(), block.Time()) {
-			if len(block.Withdrawals()) > 0 {
-				firstWithdrawal := block.Withdrawals()[0]
-				if firstWithdrawal.Validator == math.MaxUint64 {
-					amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(params.GWei))
-					if err := ProcessStakingDistribution(evm, firstWithdrawal.Address, amount); err != nil {
-						log.Error("could not process staking distribution", "err", err)
+		isStakingActive := p.config.IsStakingActive(block.Number(), block.Time())
+		if len(block.Withdrawals()) > 0 {
+			firstWithdrawal := block.Withdrawals()[0]
+			if firstWithdrawal.Validator == math.MaxUint64 {
+				amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(params.GWei))
+				if err := ProcessStakingDistribution(evm, firstWithdrawal.Address, amount, isStakingActive); err != nil {
+					log.Error("could not process staking distribution", "err", err)
+				}
+			}
+		}
+		if err := ProcessStakingSlashings(evm, block.Slashed()); err != nil {
+			log.Error("could not process staking slashings", "err", err)
+		}
+		if p.config.IsRestakingActive(block.Number(), block.Time()) {
+			if len(block.Withdrawals()) > 1 {
+				secondWithdrawal := block.Withdrawals()[1]
+				if secondWithdrawal.Validator == math.MaxUint64 {
+					amount := new(big.Int).Mul(new(big.Int).SetUint64(secondWithdrawal.Amount), big.NewInt(params.GWei))
+					if err := ProcessRestakingDistribution(evm, secondWithdrawal.Address, amount); err != nil {
+						log.Error("could not process restaking distribution", "err", err)
 					}
 				}
 			}
-			if p.config.IsRestakingActive(block.Number(), block.Time()) {
-				if len(block.Withdrawals()) > 1 {
-					secondWithdrawal := block.Withdrawals()[1]
-					if secondWithdrawal.Validator == math.MaxUint64 {
-						amount := new(big.Int).Mul(new(big.Int).SetUint64(secondWithdrawal.Amount), big.NewInt(params.GWei))
-						if err := ProcessRestakingDistribution(evm, secondWithdrawal.Address, amount); err != nil {
-							log.Error("could not process restaking distribution", "err", err)
-						}
-					}
-				}
-				if len(block.Withdrawals()) > 2 {
-					thirdWithdrawal := block.Withdrawals()[2]
-					if thirdWithdrawal.Validator == math.MaxUint64 {
-						amount := new(big.Int).Mul(new(big.Int).SetUint64(thirdWithdrawal.Amount), big.NewInt(params.GWei))
-						if err := ProcessBaseInflation(evm, thirdWithdrawal.Address, amount); err != nil {
-							log.Error("could not process base inflation", "err", err)
-						}
+			if len(block.Withdrawals()) > 2 {
+				thirdWithdrawal := block.Withdrawals()[2]
+				if thirdWithdrawal.Validator == math.MaxUint64 {
+					amount := new(big.Int).Mul(new(big.Int).SetUint64(thirdWithdrawal.Amount), big.NewInt(params.GWei))
+					if err := ProcessBaseInflation(evm, thirdWithdrawal.Address, amount); err != nil {
+						log.Error("could not process base inflation", "err", err)
 					}
 				}
 			}
@@ -317,7 +319,7 @@ func ProcessConsolidationQueue(requests *[][]byte, evm *vm.EVM) error {
 }
 
 // ProcessStakingDistribution
-func ProcessStakingDistribution(evm *vm.EVM, address common.Address, amount *big.Int) error {
+func ProcessStakingDistribution(evm *vm.EVM, address common.Address, amount *big.Int, isStakingActive bool) error {
 	if tracer := evm.Config.Tracer; tracer != nil {
 		onSystemCallStart(tracer, evm.GetVMContext())
 		if tracer.OnSystemCallEnd != nil {
@@ -327,6 +329,9 @@ func ProcessStakingDistribution(evm *vm.EVM, address common.Address, amount *big
 	data := make([]byte, 32)
 	amount.FillBytes(data)
 	addr := address
+	if isStakingActive {
+		addr = params.StakingContractAddress
+	}
 	msg := &Message{
 		From: params.SystemAddress,
 		// Value:     amount,
@@ -349,6 +354,49 @@ func ProcessStakingDistribution(evm *vm.EVM, address common.Address, amount *big
 	if err != nil {
 		return fmt.Errorf("system call failed to execute: %v", err)
 	}
+	return nil
+}
+
+var slashValidatorMethodID = crypto.Keccak256([]byte("slashValidator(address,uint256)"))[:4]
+
+// ProcessStakingSlashings applies consensus-layer slash metadata by calling
+// StakingContract.slashValidator for each slashed validator entry.
+func ProcessStakingSlashings(evm *vm.EVM, slashed types.Withdrawals) error {
+	if len(slashed) == 0 {
+		return nil
+	}
+	if tracer := evm.Config.Tracer; tracer != nil {
+		onSystemCallStart(tracer, evm.GetVMContext())
+		if tracer.OnSystemCallEnd != nil {
+			defer tracer.OnSystemCallEnd()
+		}
+	}
+	stakingAddr := params.StakingContractAddress
+	evm.StateDB.AddAddressToAccessList(stakingAddr)
+	for _, entry := range slashed {
+		if entry == nil || entry.Amount == 0 {
+			continue
+		}
+		amount := new(big.Int).Mul(new(big.Int).SetUint64(entry.Amount), big.NewInt(params.GWei))
+		data := make([]byte, 4+32+32)
+		copy(data[:4], slashValidatorMethodID)
+		copy(data[4:36], common.LeftPadBytes(entry.Address.Bytes(), 32))
+		copy(data[36:68], common.LeftPadBytes(amount.Bytes(), 32))
+		msg := &Message{
+			From:      params.SystemAddress,
+			GasLimit:  30_000_000,
+			GasPrice:  common.Big0,
+			GasFeeCap: common.Big0,
+			GasTipCap: common.Big0,
+			To:        &stakingAddr,
+			Data:      data,
+		}
+		evm.SetTxContext(NewEVMTxContext(msg))
+		if _, _, err := evm.Call(msg.From, *msg.To, msg.Data, 30_000_000, common.U2560); err != nil {
+			return fmt.Errorf("slashValidator failed for validator %s: %w", entry.Address, err)
+		}
+	}
+	evm.StateDB.Finalise(true)
 	return nil
 }
 

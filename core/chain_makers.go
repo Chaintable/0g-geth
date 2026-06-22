@@ -244,7 +244,7 @@ func (b *BlockGen) AddUncle(h *types.Header) {
 		h.BaseFee = eip1559.CalcBaseFee(b.cm.config, parent)
 		if !b.cm.config.IsLondon(parent.Number) {
 			parentGasLimit := parent.GasLimit * b.cm.config.ElasticityMultiplier()
-			h.GasLimit = CalcGasLimit(parentGasLimit, parentGasLimit)
+			h.GasLimit = CalcGasLimit(parentGasLimit, parentGasLimit, h.Time, b.cm.config.ChainID.Uint64())
 		}
 	}
 	b.uncles = append(b.uncles, h)
@@ -329,37 +329,40 @@ func (b *BlockGen) collectRequests(readonly bool) (requests [][]byte) {
 		// create EVM for system calls
 		blockContext := NewEVMBlockContext(b.header, b.cm, &b.header.Coinbase)
 		evm := vm.NewEVM(blockContext, statedb, b.cm.config, vm.Config{})
-		if b.cm.config.IsDelegationActive(b.header.Number, b.header.Time) {
-			if len(b.withdrawals) > 0 {
-				firstWithdrawal := b.withdrawals[0]
-				if firstWithdrawal.Validator == math.MaxUint64 {
-					amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(params.GWei))
-					if err := ProcessStakingDistribution(evm, firstWithdrawal.Address, amount); err != nil {
-						log.Error("could not process staking distribution", "err", err)
+		isStakingActive := b.cm.config.IsStakingActive(b.header.Number, b.header.Time)
+		if len(b.withdrawals) > 0 {
+			firstWithdrawal := b.withdrawals[0]
+			if firstWithdrawal.Validator == math.MaxUint64 {
+				amount := new(big.Int).Mul(new(big.Int).SetUint64(firstWithdrawal.Amount), big.NewInt(params.GWei))
+				if err := ProcessStakingDistribution(evm, firstWithdrawal.Address, amount, isStakingActive); err != nil {
+					log.Error("could not process staking distribution", "err", err)
+				}
+			}
+		}
+		if err := ProcessStakingSlashings(evm, nil); err != nil {
+			log.Error("could not process staking slashings", "err", err)
+		}
+		if b.cm.config.IsRestakingActive(b.header.Number, b.header.Time) {
+			if len(b.withdrawals) > 1 {
+				secondWithdrawal := b.withdrawals[1]
+				if secondWithdrawal.Validator == math.MaxUint64 {
+					amount := new(big.Int).Mul(new(big.Int).SetUint64(secondWithdrawal.Amount), big.NewInt(params.GWei))
+					if err := ProcessRestakingDistribution(evm, secondWithdrawal.Address, amount); err != nil {
+						log.Error("could not process restaking distribution", "err", err)
 					}
 				}
 			}
-			if b.cm.config.IsRestakingActive(b.header.Number, b.header.Time) {
-				if len(b.withdrawals) > 1 {
-					secondWithdrawal := b.withdrawals[1]
-					if secondWithdrawal.Validator == math.MaxUint64 {
-						amount := new(big.Int).Mul(new(big.Int).SetUint64(secondWithdrawal.Amount), big.NewInt(params.GWei))
-						if err := ProcessRestakingDistribution(evm, secondWithdrawal.Address, amount); err != nil {
-							log.Error("could not process restaking distribution", "err", err)
-						}
-					}
-				}
-				if len(b.withdrawals) > 2 {
-					thirdWithdrawal := b.withdrawals[2]
-					if thirdWithdrawal.Validator == math.MaxUint64 {
-						amount := new(big.Int).Mul(new(big.Int).SetUint64(thirdWithdrawal.Amount), big.NewInt(params.GWei))
-						if err := ProcessBaseInflation(evm, thirdWithdrawal.Address, amount); err != nil {
-							log.Error("could not process base inflation", "err", err)
-						}
+			if len(b.withdrawals) > 2 {
+				thirdWithdrawal := b.withdrawals[2]
+				if thirdWithdrawal.Validator == math.MaxUint64 {
+					amount := new(big.Int).Mul(new(big.Int).SetUint64(thirdWithdrawal.Amount), big.NewInt(params.GWei))
+					if err := ProcessBaseInflation(evm, thirdWithdrawal.Address, amount); err != nil {
+						log.Error("could not process base inflation", "err", err)
 					}
 				}
 			}
 		}
+
 		// EIP-7002
 		if err := ProcessWithdrawalQueue(&requests, evm); err != nil {
 			panic(fmt.Sprintf("could not process withdrawal requests: %v", err))
@@ -641,7 +644,7 @@ func (cm *chainMaker) makeHeader(parent *types.Block, state *state.StateDB, engi
 		header.BaseFee = eip1559.CalcBaseFee(cm.config, parentHeader)
 		if !cm.config.IsLondon(parent.Number()) {
 			parentGasLimit := parent.GasLimit() * cm.config.ElasticityMultiplier()
-			header.GasLimit = CalcGasLimit(parentGasLimit, parentGasLimit)
+			header.GasLimit = CalcGasLimit(parentGasLimit, parentGasLimit, header.Time, cm.config.ChainID.Uint64())
 		}
 	}
 	if cm.config.IsCancun(header.Number, header.Time) {

@@ -28,6 +28,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
@@ -78,6 +79,12 @@ type Miner struct {
 
 // New creates a new miner with provided config.
 func New(eth Backend, config Config, engine consensus.Engine) *Miner {
+	if config.GasCeil == 0 {
+		config.GasCeil = DefaultConfig.GasCeil
+		log.Info("Miner gas ceil not set, using default", "gasCeil", config.GasCeil)
+	} else {
+		log.Info("Miner gas ceil configured", "gasCeil", config.GasCeil)
+	}
 	return &Miner{
 		config:      &config,
 		chainConfig: eth.BlockChain().Config(),
