@@ -34,12 +34,7 @@ type pipelineTracerConfig struct {
 
 	// Auto failover configurations
 	EtcdEndpoints []string `json:"etcd_endpoints"`
-	ElectionKey   string   `json:"election_key"`
-	NodeID        string   `json:"node_id"`      // default to hostname
-	GracePeriod   int      `json:"grace_period"` // default to 10 seconds, unit is second
-
-	// Writer node registry configurations
-	WriterRegistryTTL int64 `json:"writer_registry_ttl"` // TTL for writer node registration in seconds, default 30
+	NodeID        string   `json:"node_id"` // default to hostname
 }
 
 type NativePipelineTracer struct {
